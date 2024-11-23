@@ -1,9 +1,10 @@
 import os
 import gzip
 import csv
-from joblib import Parallel, delayed
+import json
+from statistics import mean, stdev
 
-root_dir = "/hb/scratch/mglasena/hla/mhc/"
+root_dir = "/hb/scratch/mglasena/mhc/"
 
 regions_file = "mhc_regions.bed"
 
@@ -34,42 +35,28 @@ def parse_mosdepth_per_base(output_file):
 	# 2. Parse per-base files
 	for file in per_base_file_list:
 		prefix = file.split(".per-base.bed.gz")[0].split("/")[-1]
-		output_file = "{}_per_base.tsv".format(prefix)
-		lines = gzip.open(file, "rt").read().splitlines()
-	
-		with open(output_file, "w") as f:
-			for line in lines:
-				chromosome = line.split("\t")[0]
+		intermediate_output_file = "{}_per_base.tsv".format(prefix)
+		
+		with gzip.open(file, "rt") as f1, open(intermediate_output_file, "w") as f2:
+			for line in f1:
+				if not line.startswith("chr6"):
+					continue
 
-				if chromosome == "chr6":
-					window_start = int(line.split("\t")[1])
-					window_stop = int(line.split("\t")[2])
-					depth = int(line.split("\t")[3])
-					
-					# Continue if window end is before gene start 
-					if window_stop < start_pos:
-						continue
-					
-					# Window begins before gene start and ends after gene start 
-					elif window_stop >= start_pos and window_start < start_pos:
-						sliding_index = start_pos
-						while sliding_index < window_stop:
-							f.write(str(sliding_index) + "\t" + str(depth) + "\n")
-							sliding_index += 1
-
-					# Window contained entirely within gene start/stop coordinates
-					elif window_start >= start_pos and window_stop <= stop_pos:
-						sliding_index = window_start
-						while sliding_index < window_stop:
-							f.write(str(sliding_index) + "\t" + str(depth) + "\n")
-							sliding_index += 1
-
-					# Window begins before gene start but ends after gene start 
-					elif window_start >= start_pos and window_start <= stop_pos and window_stop >= stop_pos:
-						sliding_index = window_start
-						while sliding_index <= stop_pos:
-							f.write(str(sliding_index) + "\t" + str(depth) + "\n")
-							sliding_index += 1
+				fields = line.strip().split("\t")
+				chromosome = fields[0]
+				window_start = int(fields[1])
+				window_stop = int(fields[2])
+				depth = int(fields[3])
+				
+				# Continue if window end is before gene start 
+				if window_stop < start_pos:
+					continue
+				
+				sliding_index = max(window_start, start_pos)
+				end_index = min(window_stop, stop_pos)
+				while sliding_index < end_index:
+					f2.write(str(sliding_index) + "\t" + str(depth) + "\n")
+					sliding_index += 1
 
 	# 3. Collate per-base files
 	get_per_base_file_paths = "find {} -type f -name '*_per_base.tsv*' > out_files".format(root_dir)
@@ -82,43 +69,53 @@ def parse_mosdepth_per_base(output_file):
 	sorted_file_list = sorted(file_list)
 	
 	for file in sorted_file_list:
-		lines = open(file,"r").read().splitlines()
-		sample = file.split("/")[-1].split("per_base.tsv")[0].split("_")[0]
-		platform = file.split("/")[-1].split("per_base.tsv")[0].split("_")[1]
+		with open(file, "r") as f:
+			sample = file.split("/")[-1].split("per_base.tsv")[0].split("_")[0]
+			platform = file.split("/")[-1].split("per_base.tsv")[0].split("_")[1]
 
-		for line in lines:
-			base = str(line.split("\t")[0])
-			depth = str(line.split("\t")[1])
-			per_base_dict[base][platform].append(depth)
+			for line in f:
+				base, depth = line.strip().split("\t")
+				per_base_dict[base][platform].append(depth)
 
 	# 4. Write output
-	outfile = open(output_file,"w")
-	writer = csv.writer(out_file, delimiter=",")
+	with open(output_file,"w") as outfile:
+		writer = csv.writer(outfile, delimiter=",")
 
-	header = ["base", "platform"] + sample_list
-	writer.writerow(header)
+		header = ["base", "platform"] + sample_list
+		writer.writerow(header)
 
-	platforms = ['revio', 'promethion', 'minion']
+		for platform_name in platforms:
+			for position, platform_data in per_base_dict.items():
+				coverage_list = platform_data[platform_name]
+				data = [position, platform_name] + coverage_list
+				writer.writerow(data)
 
-	for platform_name in platforms:
-		for position, platform_data in per_base_dict.items():
-			coverage_list = platform_data[platform_name]
-			data = [position, platform_name] + coverage_list
-			writer.writerow(data)
+	# 5. Calculate average and standard deviation for depth by base for each platform 
+    for platform_name in platforms:
+    	metric_file = f"{platform_name}_mean_std_depth.tsv"
 
-	out_file.close()
+	    with open(metric_file, "w") as f1:
+	        writer = csv.writer(f1, delimiter="\t")
 
-# Need to account for platform!
-def parse_mosdepth_regions_thresholds():
+	        writer.writerow(["base", "mean_depth", "std_depth"])
+
+	        for base, platform_data in per_base_dict.items():
+	            depths = platform_data[platform_name]
+	            avg_depth = mean(depths)
+	            std_depth = stdev(depths)
+
+	            # Write results
+	            writer.writerow([base, avg_depth, std_depth])
+
+def parse_mosdepth_regions_thresholds(output_json_file):
 	for platform in platforms:
-		coverage_dict_genes[platform] = dict()
-		coverage_dict_exons[platform] = dict()
+		coverage_dict = {platform: {"gene": {}, "exon": {}}}
 
 		get_regions_file_paths = "find {} -type f -name '*.regions.bed.gz*' | grep {} | grep -v 'csi' > regions_files".format(root_dir, platform)
-		os.system(get_regions_file_paths)
-
 		get_thresholds_file_paths = "find {} -type f -name '*.thresholds.bed.gz*' | grep {} | grep -v 'csi' > thresholds_files".format(root_dir, platform)
+		
 		os.system(get_thresholds_file_paths)
+		os.system(get_regions_file_paths)
 
 		with open("regions_files", "r") as f1, open("thresholds_files","r") as f2:
 			file_list = zip(sorted(f1.read().splitlines()),sorted(f2.read().splitlines()))
@@ -126,63 +123,95 @@ def parse_mosdepth_regions_thresholds():
 		os.system("rm regions_files")
 		os.system("rm thresholds_files")
 		
-		for file_pair in list(file_list):
-			regions_file = file_pair[0]
-			thresholds_file = file_pair[1]
-
+		for regions_file, thresholds_file in file_list:
 			sample_name = regions_file.split("/")[-1].split(".")[0]
 
 			with gzip.open(regions_file, "rt") as f1, gzip.open(thresholds_file,"rt") as f2:
-				records = f1.read().splitlines()
+				regions = f1.read().splitlines()
 				thresholds = f2.read().splitlines()[1:]
 
-				zipped_list = list(zip(records,thresholds))
-
-				for record in zipped_list:
-					# If record is gene
-					record_type = record[0].split("\t")[3].split("_")[0]
-					
-					if record_type == "gene":
-						if len(record[0].split("\t")[3].split("_")) == 3:
-							name = record[0].split("\t")[3].split("_")[1]
-							id = record[0].split("\t")[3].split("_")[2]
-						else:
-							name = "missing"
-							id = record[0].split("\t")[3].split("_")[1]
-					
-					elif record_type == "exon":
-						name = record[0].split("\t")[3]
-						id = name.split("_")[1]
-						transcript_id = name.split("_")[2]
-
-					start = record[0].split("\t")[1]
-					stop = record[0].split("\t")[2]
+				for regions_line, thresholds_line in zip(regions,thresholds):
+					regions_fields = regions_line.split("\t")
+					record_type = regions_fields[3].split("_")[0]
+					start = regions_fields[1]
+					stop = regions_fields[2]
 					length = int(stop) - int(start)
-					coverage_depth = float(record[0].split("\t")[4])
-					num_20x = int(record[1].split("\t")[4])
-					num_30x = int(record[1].split("\t")[5])
+					coverage_depth = float(regions_fields[4])
+					threshold_fields = thresholds_line.split("\t")
+					num_20x = int(threshold_fields[4])
+					num_30x = int(threshold_fields[5])
 					prop_20x = num_20x / length
 					prop_30x = num_30x / length
 					
-					coverage_dict_genes[platform][id] = dict()
-					coverage_dict_exons[platform][id] = dict()
-
 					if record_type == "gene":
-						coverage_dict_genes[platform][id][sample_name] = [gene_name, start, stop, coverage_depth, prop_20x, prop_30x]
-
-					elif record_type == "exon":
-						if not exon_id in coverage_depth_dict[platform][id][sample_name]:
-							coverage_dict_exons[platform][id][sample_name] = [exon_name, [transcript_id], [gene_id], start, stop, coverage_depth, prop_20x, prop_30x]
-
+						if len(regions_fields[3].split("_")) == 3:
+							name = regions_fields[3].split("_")[1]
+							ID = regions_fields[3].split("_")[2]
 						else:
-							coverage_depth_dict[platform][id][sample_name][1].append(transcript_id)
-							coverage_depth_dict[platform][id][sample_name][2].append(id)
+							name = "missing"
+							ID = regions_fields[3].split("_")[1]
+					
+					elif record_type == "exon":
+						name = regions_fields[3]
+						ID = name.split("_")[1]
+						transcript_ID = name.split("_")[2]
+						parent_gene = name.split("_",3)[3]
+
+					if not ID in coverage_dict[platform][record_type]:
+						coverage_dict[platform][record_type][ID] = {
+							"name": name,
+							"start": start,
+							"stop": stop,
+							"transcripts": [] if record_type == "exon" else None,
+							"parent_gene": [] if record_type == "exon" else None
+						}
+					
+					coverage_dict[platform][record_type][ID][sample_name] = {
+						"coverage_depth": coverage_depth,
+						"prop_20x": prop_20x,
+						"prop_30x": prop_30x
+					}
+
+					current_record = coverage_dict[platform][record_type][ID]
+					if record_type == "exon":
+						if not transcript_ID in current_record["transcripts"]:
+							current_record["transcripts"].append(transcript_ID)
+						if not parent_gene in current_record["parent_gene"]:
+							current_record["parent_gene"].append(parent_gene)
+
+	with open(output_json_file, "w") as json_file:
+		json.dump(coverage_dict, json_file, indent = 4)
+
+def write_results():
+    metrics = ["coverage_depth", "prop_20x", "prop_30x"]
+
+    for platform, record_types in coverage_dict.items():
+        for record_type, data in record_types.items():
+            for metric in metrics:
+                output_file = f"{platform}_{record_type}_{metric}.tsv"
+
+                with open(output_file, "w") as f:
+                    writer = csv.writer(f, delimiter="\t")
+
+                    if record_type == "exon":
+                    	header = ["ID", "start", "stop", "transcripts", "parent_genes"] + sample_list
+                    elif record_type == "gene":
+                    	header = ["gene_name", "gene_id", "start", "stop"] + sample_list
+                	writer.writerow(header)
+
+                    for record_id, record_info in data.items():
+                        if record_type == "exon":
+                            row = [record_id, record_info["start"], record_info["stop"], ",".join(record_info["transcripts"]), ",".join(record_info["parent_gene"])]
+                        elif record_type == "gene":
+                            row = [record_info["name"], record_id, record_info["start"], record_info["stop"]]
+
+                        row.extend(record_info[sample][metric] for sample in sample_list)
+                        writer.writerow(row)
 
 def main():
 	#parse_mosdepth_per_base("hla_per_base.csv")
-	#parse_mosdepth_regions_thresholds()
-
-	#Write CSV and JSon
+	#parse_mosdepth_regions_thresholds("coverage_dict.json")
+	#write_results()
 
 if __name__ == "__main__":
 	main()
