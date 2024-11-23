@@ -14,11 +14,13 @@ threads = 4
 start_pos = 28000000
 stop_pos = 34000000
 
-per_base_dict = {str(pos): {"revio": [], "promethion": [], "minion": []} for pos in range(start_pos, stop_pos + 1)}
-coverage_dict_genes = dict()
-coverage_dict_exons = dict()
+#per_base_dict = {str(pos): {"revio": [], "promethion": [], "minion": []} for pos in range(start_pos, stop_pos + 1)}
+per_base_dict = {str(pos): {"pacbio": [], "promethion": []} for pos in range(start_pos, stop_pos + 1)}
 
-platforms = ["minion", "promethion", "revio"]
+#platforms = ["minion", "promethion", "revio"]
+platforms = ["pacbio", "promethion"]
+
+coverage_dict = {platform: {"gene": {}, "exon": {}} for platform in platforms}
 
 sample_list = ['HG002', 'HG003', 'HG004', 'HG005', 'HG01106', 'HG01258', 'HG01891', 'HG01928', 'HG02055', 'HG02630', 'HG03492', 'HG03579', 'IHW09021', 'IHW09049', 'IHW09071', 'IHW09117', 'IHW09118', 'IHW09122', 'IHW09125', 'IHW09175', 'IHW09198', 'IHW09200', 'IHW09224', 'IHW09245', 'IHW09251', 'IHW09359', 'IHW09364', 'IHW09409', 'NA19240', 'NA20129', 'NA21309', 'NA24694', 'NA24695']
 
@@ -54,7 +56,7 @@ def parse_mosdepth_per_base(output_file):
 				
 				sliding_index = max(window_start, start_pos)
 				end_index = min(window_stop, stop_pos)
-				while sliding_index < end_index:
+				while sliding_index <= end_index:
 					f2.write(str(sliding_index) + "\t" + str(depth) + "\n")
 					sliding_index += 1
 
@@ -75,7 +77,7 @@ def parse_mosdepth_per_base(output_file):
 
 			for line in f:
 				base, depth = line.strip().split("\t")
-				per_base_dict[base][platform].append(depth)
+				per_base_dict[base][platform].append(int(depth))
 
 	# 4. Write output
 	with open(output_file,"w") as outfile:
@@ -91,25 +93,24 @@ def parse_mosdepth_per_base(output_file):
 				writer.writerow(data)
 
 	# 5. Calculate average and standard deviation for depth by base for each platform 
-    for platform_name in platforms:
-    	metric_file = f"{platform_name}_mean_std_depth.tsv"
+	for platform_name in platforms:
+		metric_file = f"{platform_name}_mean_std_depth.tsv"
 
-	    with open(metric_file, "w") as f1:
-	        writer = csv.writer(f1, delimiter="\t")
+		with open(metric_file, "w") as f1:
+			writer = csv.writer(f1, delimiter="\t")
 
-	        writer.writerow(["base", "mean_depth", "std_depth"])
+			writer.writerow(["base", "mean_depth", "std_depth"])
 
-	        for base, platform_data in per_base_dict.items():
-	            depths = platform_data[platform_name]
-	            avg_depth = mean(depths)
-	            std_depth = stdev(depths)
+			for base, platform_data in per_base_dict.items():
+				depths = platform_data[platform_name]
+				avg_depth = mean(depths)
+				std_depth = stdev(depths)
 
-	            # Write results
-	            writer.writerow([base, avg_depth, std_depth])
+				# Write results
+				writer.writerow([base, avg_depth, std_depth])
 
 def parse_mosdepth_regions_thresholds(output_json_file):
 	for platform in platforms:
-		coverage_dict = {platform: {"gene": {}, "exon": {}}}
 
 		get_regions_file_paths = "find {} -type f -name '*.regions.bed.gz*' | grep {} | grep -v 'csi' > regions_files".format(root_dir, platform)
 		get_thresholds_file_paths = "find {} -type f -name '*.thresholds.bed.gz*' | grep {} | grep -v 'csi' > thresholds_files".format(root_dir, platform)
@@ -124,7 +125,7 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 		os.system("rm thresholds_files")
 		
 		for regions_file, thresholds_file in file_list:
-			sample_name = regions_file.split("/")[-1].split(".")[0]
+			sample_name = regions_file.split("/")[-1].split(".")[0].split("_")[0]
 
 			with gzip.open(regions_file, "rt") as f1, gzip.open(thresholds_file,"rt") as f2:
 				regions = f1.read().splitlines()
@@ -183,35 +184,35 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 		json.dump(coverage_dict, json_file, indent = 4)
 
 def write_results():
-    metrics = ["coverage_depth", "prop_20x", "prop_30x"]
+	metrics = ["coverage_depth", "prop_20x", "prop_30x"]
 
-    for platform, record_types in coverage_dict.items():
-        for record_type, data in record_types.items():
-            for metric in metrics:
-                output_file = f"{platform}_{record_type}_{metric}.tsv"
+	for platform, record_types in coverage_dict.items():
+		for record_type, data in record_types.items():
+			for metric in metrics:
+				output_file = f"{platform}_{record_type}_{metric}.tsv"
 
-                with open(output_file, "w") as f:
-                    writer = csv.writer(f, delimiter="\t")
+				with open(output_file, "w") as f:
+					writer = csv.writer(f, delimiter="\t")
 
-                    if record_type == "exon":
-                    	header = ["ID", "start", "stop", "transcripts", "parent_genes"] + sample_list
-                    elif record_type == "gene":
-                    	header = ["gene_name", "gene_id", "start", "stop"] + sample_list
-                	writer.writerow(header)
+					if record_type == "exon":
+						header = ["ID", "start", "stop", "transcripts", "parent_genes"] + sample_list
+					elif record_type == "gene":
+						header = ["gene_name", "gene_id", "start", "stop"] + sample_list
+					writer.writerow(header)
 
-                    for record_id, record_info in data.items():
-                        if record_type == "exon":
-                            row = [record_id, record_info["start"], record_info["stop"], ",".join(record_info["transcripts"]), ",".join(record_info["parent_gene"])]
-                        elif record_type == "gene":
-                            row = [record_info["name"], record_id, record_info["start"], record_info["stop"]]
+					for record_id, record_info in data.items():
+						if record_type == "exon":
+							row = [record_id, record_info["start"], record_info["stop"], ",".join(record_info["transcripts"]), ",".join(record_info["parent_gene"])]
+						elif record_type == "gene":
+							row = [record_info["name"], record_id, record_info["start"], record_info["stop"]]
 
-                        row.extend(record_info[sample][metric] for sample in sample_list)
-                        writer.writerow(row)
+						row.extend(record_info[sample][metric] for sample in sample_list)
+						writer.writerow(row)
 
 def main():
 	#parse_mosdepth_per_base("hla_per_base.csv")
-	#parse_mosdepth_regions_thresholds("coverage_dict.json")
-	#write_results()
+	parse_mosdepth_regions_thresholds("coverage_dict.json")
+	write_results()
 
 if __name__ == "__main__":
 	main()
