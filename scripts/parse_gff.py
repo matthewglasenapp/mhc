@@ -1,5 +1,6 @@
 import os
 import gzip
+import json
 
 root_dir = "/Users/matt/Documents/GitHub/mhc/"
 
@@ -15,6 +16,9 @@ hg38_gff_ftp = "https://ftp.ensembl.org/pub/release-110/gff3/homo_sapiens/Homo_s
 
 # Initialize dictionary of {transcript_id: parent_gene_name}
 transcript_parent_gene_dict = dict()
+
+# Gene record: biotype
+biotype_dict = dict()
 
 # Record types to include in trasncript_parent_gene_dict
 record_types = ['lnc_rna', 'mirna', 'mrna', 'ncrna', 'pseudogenic_transcript', 'snorna', 'snrna', 'transcript', 'unconfirmed_transcript']
@@ -77,6 +81,8 @@ def create_bed_files(gff_file, output_file_genes, output_file_exons):
 					if record_type in genes_bed_record_types:
 						
 						gene_id = info_field.split("ID=gene:")[1].split(";")[0]
+						biotype = info_field.split("biotype=")[1].split(";")[0]
+						biotype_dict[gene_id] = biotype
 						
 						if "Name=" in info_field:
 							gene_name = info_field.split("Name=")[1].split(";")[0]
@@ -93,6 +99,9 @@ def create_bed_files(gff_file, output_file_genes, output_file_exons):
 						parent_gene = transcript_parent_gene_dict[transcript_id]
 						name_string = exon_id + "_" + transcript_id + "_" + parent_gene
 						exons_bed.write(chromosome + "\t" + start + "\t" + stop + "\t" + name_string + "\n")
+
+	with open(output_dir + "biotype_dict.json", "w") as json_file:
+		json.dump(biotype_dict, json_file, indent = 4)
 
 def create_mosdepth_regions_file(output_file):
 	with open(output_dir + "mhc_genes.bed", "r") as f1, open(output_dir + "mhc_exons.bed", "r") as f2:
@@ -111,7 +120,6 @@ def create_mosdepth_regions_file(output_file):
 			new_field_four = ["exon_" + fields[3]]
 			new_line = "\t".join(fields[0:3] + new_field_four)
 			f3.write(new_line + "\n")
-
 					
 def main():
 	#download_gff()

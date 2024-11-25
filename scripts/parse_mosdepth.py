@@ -22,7 +22,13 @@ platforms = ["pacbio", "promethion"]
 
 coverage_dict = {platform: {"gene": {}, "exon": {}} for platform in platforms}
 
-sample_list = ['HG002', 'HG003', 'HG004', 'HG005', 'HG01106', 'HG01258', 'HG01891', 'HG01928', 'HG02055', 'HG02630', 'HG03492', 'HG03579', 'IHW09021', 'IHW09049', 'IHW09071', 'IHW09117', 'IHW09118', 'IHW09122', 'IHW09125', 'IHW09175', 'IHW09198', 'IHW09200', 'IHW09224', 'IHW09245', 'IHW09251', 'IHW09359', 'IHW09364', 'IHW09409', 'NA19240', 'NA20129', 'NA21309', 'NA24694', 'NA24695']
+# Ignore HG01891 - failed across all platforms
+sample_list = ['HG002', 'HG003', 'HG004', 'HG005', 'HG01106', 'HG01258', 'HG01928', 'HG02055', 'HG02630', 'HG03492', 'HG03579', 'IHW09021', 'IHW09049', 'IHW09071', 'IHW09117', 'IHW09118', 'IHW09122', 'IHW09125', 'IHW09175', 'IHW09198', 'IHW09200', 'IHW09224', 'IHW09245', 'IHW09251', 'IHW09359', 'IHW09364', 'IHW09409', 'NA19240', 'NA20129', 'NA21309', 'NA24694', 'NA24695']
+
+# Original 16 samples
+sample_list_hprc = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
+
+biotype_dict_file = "biotype_dict.json"
 
 def parse_mosdepth_per_base(output_file):
 	# 1. Get per-base files
@@ -93,6 +99,7 @@ def parse_mosdepth_per_base(output_file):
 				writer.writerow(data)
 
 	# 5. Calculate average and standard deviation for depth by base for each platform 
+	# Only for the 16 HPRC samples!!
 	for platform_name in platforms:
 		metric_file = f"{platform_name}_mean_std_depth.tsv"
 
@@ -102,7 +109,7 @@ def parse_mosdepth_per_base(output_file):
 			writer.writerow(["base", "mean_depth", "std_depth"])
 
 			for base, platform_data in per_base_dict.items():
-				depths = platform_data[platform_name]
+				depths = [platform_data[platform_name][sample] for sample in sample_list_hprc]
 				avg_depth = mean(depths)
 				std_depth = stdev(depths)
 
@@ -110,6 +117,9 @@ def parse_mosdepth_per_base(output_file):
 				writer.writerow([base, avg_depth, std_depth])
 
 def parse_mosdepth_regions_thresholds(output_json_file):
+    with open(biotype_dict_file, "r") as json_file:
+        biotype_dict = json.load(json_file)
+
 	for platform in platforms:
 
 		get_regions_file_paths = "find {} -type f -name '*.regions.bed.gz*' | grep {} | grep -v 'csi' > regions_files".format(root_dir, platform)
@@ -148,10 +158,12 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 						if len(regions_fields[3].split("_")) == 3:
 							name = regions_fields[3].split("_")[1]
 							ID = regions_fields[3].split("_")[2]
+							biotype = biotype_dict[ID]
 						else:
-							name = "missing"
 							ID = regions_fields[3].split("_")[1]
-					
+							name = ID
+							biotype = biotype_dict[ID]
+
 					elif record_type == "exon":
 						name = regions_fields[3]
 						ID = name.split("_")[1]
@@ -163,6 +175,7 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 							"name": name,
 							"start": start,
 							"stop": stop,
+							"biotype": biotype if record_type == "gene" else None,
 							"transcripts": [] if record_type == "exon" else None,
 							"parent_gene": [] if record_type == "exon" else None
 						}
@@ -197,14 +210,14 @@ def write_results():
 					if record_type == "exon":
 						header = ["ID", "start", "stop", "transcripts", "parent_genes"] + sample_list
 					elif record_type == "gene":
-						header = ["gene_name", "gene_id", "start", "stop"] + sample_list
+						header = ["gene_name", "gene_id", "biotype", "start", "stop"] + sample_list
 					writer.writerow(header)
 
 					for record_id, record_info in data.items():
 						if record_type == "exon":
 							row = [record_id, record_info["start"], record_info["stop"], ",".join(record_info["transcripts"]), ",".join(record_info["parent_gene"])]
 						elif record_type == "gene":
-							row = [record_info["name"], record_id, record_info["start"], record_info["stop"]]
+							row = [record_info["name"], record_id, record_info["biotype"], record_info["start"], record_info["stop"]]
 
 						row.extend(record_info[sample][metric] for sample in sample_list)
 						writer.writerow(row)
