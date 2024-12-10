@@ -1,0 +1,45 @@
+import os
+
+wd = "/hb/scratch/ogarci12/deepvariant"
+input_dir = "/hb/scratch/ogarci12/PacBio_mm2/rm_dup/"
+output_dir = "/hb/scratch/ogarci12/deepvariant/Revio_VCF/"
+ref = "/hb/scratch/ogarci12/deepvariant/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
+deepvariant_sif = "/hb/scratch/ogarci12/deepvariant/deepvariant.sif"
+
+make_output_dir = "mkdir -p {}".format(output_dir)
+os.system(make_output_dir)
+
+samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01891", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
+
+def index_bam(sample):
+    input_file = input_dir + sample + "_rm_duplicates.bam"
+    index = "samtools index {}".format(input_file)
+    os.system(index)
+
+def run_deepvariant(sample):
+    os.chdir(output_dir)
+    run_deepvariant = "singularity exec --bind {}/:/data --bind {}/:/input --bind /hb/scratch/ogarci12/deepvariant:/reference {} /opt/deepvariant/bin/run_deepvariant --model_type=PACBIO --ref=/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa --reads=/input/{}_rm_duplicates.bam --output_vcf=/data/{}.hg38.Pacbio.vcf.gz --output_gvcf=/data/{}.hg38.Pacbio.g.vcf.gz --num_shards=8".format(output_dir, input_dir, deepvariant_sif, sample, sample, sample)
+    os.system(run_deepvariant)
+
+def index_vcf(sample):
+    os.chdir(output_dir)
+    tabix = "tabix {}.hg38.Pacbio.vcf.gz".format(sample)
+    index = "bcftools index {}.hg38.Pacbio.vcf.gz".format(sample)
+    os.system(tabix)
+    os.system(index)
+
+def change_permissions():
+    os.system("chmod -R 777 {}".format(wd))
+    os.system("chmod -R 777 {}".format(input_dir))
+
+def main():
+    array_id = os.environ["array_id"]
+    print("Array ID: {}".format(array_id))
+    sample = samples[int(array_id)]
+    #index_bam(sample)
+    #run_deepvariant(sample)
+    index_vcf(sample)
+    change_permissions()
+
+if __name__ == "__main__":
+    main()

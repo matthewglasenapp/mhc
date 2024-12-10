@@ -8,11 +8,14 @@ root_dir = "/hb/scratch/mglasena/mhc/"
 
 regions_file = "mhc_regions.bed"
 
+threads = 4
+
 # Coordinates for per-base files
 start_pos = 28000000
 stop_pos = 34000000
 
-per_base_dict = {str(pos): {"pacbio": {}, "promethion": {}} for pos in range(start_pos, stop_pos + 1)}
+#per_base_dict = {str(pos): {"revio": [], "promethion": [], "minion": []} for pos in range(start_pos, stop_pos + 1)}
+per_base_dict = {str(pos): {"pacbio": [], "promethion": []} for pos in range(start_pos, stop_pos + 1)}
 
 #platforms = ["minion", "promethion", "revio"]
 platforms = ["pacbio", "promethion"]
@@ -80,7 +83,7 @@ def parse_mosdepth_per_base(output_file):
 
 			for line in f:
 				base, depth = line.strip().split("\t")
-				per_base_dict[base][platform][sample] = int(depth)
+				per_base_dict[base][platform].append(int(depth))
 
 	# 4. Write output
 	with open(output_file,"w") as outfile:
@@ -91,12 +94,13 @@ def parse_mosdepth_per_base(output_file):
 
 		for platform_name in platforms:
 			for position, platform_data in per_base_dict.items():
-				coverage_list = [platform_data[platform_name][sample] for sample in sample_list]
+				coverage_list = platform_data[platform_name]
 				data = [position, platform_name] + coverage_list
 				writer.writerow(data)
 
 	# 5. Calculate average and standard deviation for depth by base for each platform 
 	# Only for the 16 HPRC samples!!
+	hprc_indices = [sample_list.index(sample) for sample in sample_list_hprc]
 	for platform_name in platforms:
 		metric_file = f"{platform_name}_mean_std_depth.tsv"
 
@@ -106,7 +110,7 @@ def parse_mosdepth_per_base(output_file):
 			writer.writerow(["base", "mean_depth", "std_depth"])
 
 			for base, platform_data in per_base_dict.items():
-				depths = [platform_data[platform_name][sample] for sample in sample_list_hprc]
+				depths = [platform_data[platform_name][idx] for idx in hprc_indices if idx < len(platform_data[platform_name])]
 				avg_depth = mean(depths)
 				std_depth = stdev(depths)
 
@@ -154,10 +158,6 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 						if len(regions_fields[3].split("_")) == 3:
 							name = regions_fields[3].split("_")[1]
 							ID = regions_fields[3].split("_")[2]
-							biotype = biotype_dict[ID]
-						elif len(regions_fields[3].split("_")) == 4:
-							name = "_".join(regions_fields[3].split("gene_")[1].split("_")[0:2])
-							ID = regions_fields[3].split("_")[-1]
 							biotype = biotype_dict[ID]
 						else:
 							ID = regions_fields[3].split("_")[1]

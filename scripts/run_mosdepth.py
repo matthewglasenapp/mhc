@@ -6,9 +6,10 @@ bam_file_list = "bam_file_paths.txt"
 regions_file = "mhc_regions.bed"
 
 threads = 4
+mapq_threshold = 20
 
 def get_bam_file_paths():
-	with open("bam_file_paths.txt","r") as f:
+	with open(bam_file_list,"r") as f:
 		bam_file_paths_list = f.read().splitlines()
 
 	return bam_file_paths_list
@@ -19,7 +20,7 @@ def index_bam(bam_file):
 
 def run_mosdepth(bam_file):
 	prefix = bam_file.split("/")[-1].split(".")[0] + "_" + bam_file.split("/")[-1].split(".")[1].lower()
-	mosdepth = "mosdepth --by {} --thresholds 20,30 -t {} {} {}".format(regions_file, threads, prefix, bam_file)
+	mosdepth = "mosdepth --flag 2304 --mapq {} --by {} --thresholds 20,30 -t {} {} {}".format(mapq_threshold, regions_file, threads, prefix, bam_file)
 	os.system(mosdepth)
 
 def main():

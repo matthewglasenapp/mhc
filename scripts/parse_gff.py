@@ -31,6 +31,7 @@ def download_gff():
 	os.system(f"wget {hg38_gff_ftp} -P {raw_data_dir}")
 
 def build_transcript_parent_gene_dict(gff_file):
+	seen_transcripts = set()
 	lines = gzip.open(gff_file,"rt").read().splitlines()
 	for line in lines:
 		
@@ -39,24 +40,40 @@ def build_transcript_parent_gene_dict(gff_file):
 			continue
 		
 		# Parse gff mRNA records for transcript ID and parent gene name
-		elif line.split("\t")[2].lower() in record_types:
+		record_type = line.split("\t")[2].lower()
+		if record_type in record_types:
 			info_field = line.split("\t")[8]
+
+			transcript_id = None
+			gene_name = None
+			
 			if "ID=transcript:" in info_field:
 				transcript_id = info_field.split("ID=transcript:")[1].split(";")[0]
 			if "Parent=gene:" in info_field:
 				gene_id = info_field.split("Parent=gene:")[1].split(";")[0]
 			if "Name=" in info_field:
 				gene_name = info_field.split("Name=")[1].split(";")[0]
+			else:
+				print("No name")
+				print(info_field)
+				gene_name = gene_id
+
+			if transcript_id:
+			    if transcript_id in seen_transcripts:
+			        print(f"Duplicate detected in input for {transcript_id}.")
+			    seen_transcripts.add(transcript_id)
 			
 			if transcript_id in transcript_parent_gene_dict:
-				print("transcript {} already in dict".format(transcript_id))
-				break
-			
-			else:
+				print(f"Transcript {transcript_id} already in dict.")
+				print(f"Existing entry: {transcript_parent_gene_dict[transcript_id]}")
+			elif transcript_id and gene_name:
+				#print(f"Adding {transcript_id} -> {gene_name} to transcript_parent_gene_dict.")
 				transcript_parent_gene_dict[transcript_id] = gene_name
+			else:
+				print(f"Skipped line with missing data: {info_field}")
 
 def create_bed_files(gff_file, output_file_genes, output_file_exons):
-	genes_bed_record_types = ["gene", "ncRNA_gene", "pseudogene"]
+	genes_bed_record_types = ["gene", "ncrna_gene", "pseudogene"]
 	gff_lines = gzip.open(gff_file,"rt").read().splitlines()
 
 	with open(output_dir + output_file_genes, "w") as genes_bed, open(output_dir + output_file_exons, "w") as exons_bed:
