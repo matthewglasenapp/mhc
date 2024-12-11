@@ -1,11 +1,16 @@
 import os
 
 wd = "/hb/scratch/ogarci12/deepvariant"
+# Revio data with duplicates removed
 input_dir = "/hb/scratch/ogarci12/PacBio_mm2/rm_dup/"
+promethion_input_dir = ""
 output_dir = "/hb/scratch/ogarci12/deepvariant/Revio_VCF/"
 phased_bam_dir = "/hb/scratch/ogarci12/deepvariant/Revio_Phased_BAM"
 ref = "/hb/scratch/ogarci12/deepvariant/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 deepvariant_sif = "/hb/scratch/ogarci12/deepvariant/deepvariant.sif"
+
+# Threads for Clair3
+threads = 8
 
 make_output_dir = "mkdir -p {}".format(output_dir)
 os.system(make_output_dir)
@@ -24,6 +29,16 @@ def run_deepvariant(sample):
     os.chdir(output_dir)
     run_deepvariant = "singularity exec --bind {}/:/data --bind {}/:/input --bind /hb/scratch/ogarci12/deepvariant:/reference {} /opt/deepvariant/bin/run_deepvariant --model_type=PACBIO --ref=/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa --reads=/input/{}_rm_duplicates.bam --output_vcf=/data/{}.hg38.Pacbio.vcf.gz --output_gvcf=/data/{}.hg38.Pacbio.g.vcf.gz --num_shards=8".format(output_dir, input_dir, deepvariant_sif, sample, sample, sample)
     os.system(run_deepvariant)
+
+def run_clair3(sample):
+    input_file = promethion_input_dir + sample + ".hg.38.bam"
+    index = "samtools index {}".format(input_file)
+    os.system(index)
+    
+    clair_model_path = ""
+    run_clair3 = "run_clair3.sh --bam_fn={} --ref_fn={} --threads={} --platform=ont --model_path={} --output={}".format(input_file, sample, ref, threads, output_dir)
+
+    os.system(run_clair3)
 
 def index_vcf(sample):
     os.chdir(output_dir)
@@ -53,9 +68,10 @@ def main():
     sample = samples[int(array_id)]
     #index_bam(sample)
     #run_deepvariant(sample)
-    index_vcf(sample)
+    run_clair3(sample)
+    #index_vcf(sample)
     #run_whatshap(sample)
-    change_permissions()
+    #change_permissions()
 
 if __name__ == "__main__":
     main()
