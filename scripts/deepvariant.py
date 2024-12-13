@@ -12,6 +12,7 @@ promethion_input_dir = "/hb/scratch/mglasena/deepvariant_whathap/Promethion_mm2/
 
 # PromethION/Clair3 output dir
 clair3_output_dir = "/hb/scratch/mglasena/deepvariant_whathap/PromethION_VCF/"
+clair3_output_dir_revio = "/hb/scratch/mglasena/deepvariant_whahap/Revio_VCF/"
 
 # Output dir for whatshap
 phased_bam_dir = "/hb/scratch/ogarci12/deepvariant/Revio_Phased_BAM"
@@ -22,6 +23,7 @@ ref = "/hb/scratch/ogarci12/deepvariant/GCA_000001405.15_GRCh38_no_alt_analysis_
 deepvariant_sif = "/hb/scratch/ogarci12/deepvariant/deepvariant.sif"
 clair3_sif = "/hb/scratch/mglasena/deepvariant_whathap/clair3_latest.sif"
 clair3_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
+hifi_revio_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
 
 # Threads for Clair3
 threads = 8
@@ -45,12 +47,19 @@ def run_deepvariant(sample):
     os.system(run_deepvariant)
 
 def run_clair3(sample):
-    input_file = promethion_input_dir + sample + ".hg38.minimap.promethion.raw.bam"
+    #input_file = promethion_input_dir + sample + ".hg38.minimap.promethion.raw.bam"
+    #output_dir = clair3_output_dir + sample
+    input_file = input_dir + sample + "_rm_duplicates.bam"
+    output_dir = clair3_output_dir_revio + sample
+    os.system("mkdir -p " + output_dir)
     print("Variant Calling {}".format(input_file))
-    index = "samtools index {}".format(input_file)
-    os.system(index)
+    #index = "samtools index {}".format(input_file)
+    #os.system(index)
 
-    run_clair3 = "run_clair3.sh --bam_fn={} --ref_fn={} --platform=ont --model_path={} --output={} --threads={}".format(input_file, ref, clair3_model_path, clair3_output_dir, threads)
+    #run_clair3 = "run_clair3.sh --bam_fn={} --ref_fn={} --platform=ont --model_path={} --output={} --threads={}".format(input_file, ref, clair3_model_path, output_dir, threads)
+
+    run_clair3 = "run_clair3.sh --bam_fn={} --ref_fn={} --platform=hifi --model_path={} --output={} --threads={}".format(input_file, ref, hifi_revio_model_path, output_dir, threads)
+
     os.system(run_clair3)
 
 def index_vcf(sample):
