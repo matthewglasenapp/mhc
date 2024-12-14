@@ -8,10 +8,10 @@ input_dir = "/hb/scratch/ogarci12/PacBio_mm2/rm_dup/"
 output_dir = "/hb/scratch/ogarci12/deepvariant/Revio_VCF/"
 
 # PromethION BAM with Duplicates Removed
-promethion_input_dir = "/hb/scratch/mglasena/deepvariant_whathap/Promethion_mm2/mapped_raw/"
+promethion_input_dir = "/hb/scratch/mglasena/mhc_genotype_calls/Promethion_mm2/mapped_raw/"
 
 # PromethION/Clair3 output dir
-clair3_output_dir = "/hb/scratch/mglasena/deepvariant_whathap/PromethION_VCF/"
+clair3_output_dir = "/hb/scratch/mglasena/mhc_genotype_calls/PromethION_VCF/"
 clair3_output_dir_revio = "/hb/scratch/mglasena/deepvariant_whahap/Revio_VCF/"
 
 # Output dir for whatshap
@@ -21,7 +21,7 @@ phased_bam_dir = "/hb/scratch/ogarci12/deepvariant/Revio_Phased_BAM"
 ref = "/hb/scratch/ogarci12/deepvariant/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 
 deepvariant_sif = "/hb/scratch/ogarci12/deepvariant/deepvariant.sif"
-clair3_sif = "/hb/scratch/mglasena/deepvariant_whathap/clair3_latest.sif"
+clair3_sif = "/hb/scratch/mglasena/mhc_genotype_calls/clair3_latest.sif"
 clair3_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_sup_g5014"
 hifi_revio_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/hifi_revio"
 
