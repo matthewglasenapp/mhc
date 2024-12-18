@@ -7,15 +7,16 @@ library(dplyr)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/concordance/")
 
 # Read the CSV file
-data <- read.csv("concordance.csv", header = TRUE, stringsAsFactors = FALSE)
+data <- read.csv("concordance_results.csv", header = TRUE, stringsAsFactors = FALSE)
+head(data)
 
-# Clean up the numeric columns
+# Clean up the numeric columns (if necessary)
 data$recall <- as.numeric(gsub("[^0-9.]", "", data$recall))
 data$precision <- as.numeric(gsub("[^0-9.]", "", data$precision))
-data$F1 <- as.numeric(gsub("[^0-9.]", "", data$F1))
+data$f1 <- as.numeric(gsub("[^0-9.]", "", data$f1))
 
 # Rename 'type' and 'platform' variables directly
-data$type[data$type == "SNV"] <- "SNV"
+data$type[data$type == "snp"] <- "SNV"
 data$type[data$type == "indel"] <- "Indel"
 
 data$platform[data$platform == "revio"] <- "PacBio Revio"
@@ -27,15 +28,15 @@ data$platform <- factor(data$platform, levels = c("PacBio Revio", "ONT PromethIO
 
 # Reshape the data to long format
 data_long <- data %>%
-  pivot_longer(cols = c(recall, precision, F1), 
-               names_to = "metric", 
+  pivot_longer(cols = c(recall, precision, f1),
+               names_to = "metric",
                values_to = "value")
 
 # Standardize the names of `metric`
-data_long$metric <- recode(data_long$metric, 
-                           recall = "Recall", 
-                           precision = "Precision", 
-                           F1 = "F1")  # Ensure consistent naming
+data_long$metric <- recode(data_long$metric,
+                           recall = "Recall",
+                           precision = "Precision",
+                           f1 = "F1")  # Ensure consistent naming
 
 # Define a color-blind-friendly palette
 cb_palette <- c("Recall" = "#D55E00", "Precision" = "#0072B2", "F1" = "#009E73")
@@ -63,7 +64,9 @@ figure <- ggplot(data_long, aes(x = sample, y = value, shape = metric, color = m
     legend.text = element_text(size = 10)
   )
 
+# Display the plot
 figure
 
-ggsave(filename = "concordance.pdf", plot = figure, width=169, units = "mm")
+ggsave(filename = "concordance.pdf", plot = figure, width = 169, units = "mm")
+ggsave(filename = "concordance.png", plot = figure, width = 169, units = "mm")
 
