@@ -4,12 +4,11 @@ import csv
 threads = 8
 
 samples = ["HG002", "HG003", "HG004", "HG005"]
-platforms = ["revio"]
-#platforms = ["revio", "promethion"]
+platforms = ["revio", "promethion"]
 types = ["snp", "indel"]
 
 root_dir = "/hb/scratch/mglasena/MHC/concordance/"
-input_vcf_dir = "/hb/scratch/mglasena/MHC/genotypes/revio/"
+input_vcf_dir = "/hb/scratch/mglasena/MHC/genotypes/"
 hap_py_input_dir = root_dir + "hap_py_input/"
 giab_benchmark_dir = root_dir + "GIAB_benchmark/"
 output_dir = root_dir + "hap_py_results/"
@@ -37,7 +36,11 @@ def run_happy(platform, sample):
 	outdir = output_dir + platform + "/"
 	os.system("mkdir -p {}".format(outdir))
 	output_prefix = outdir + platform + "_" + sample
-	query_vcf = input_vcf_dir + sample + ".hg38." + platform + ".vcf.gz" 
+	if platform == "revio":
+		query_vcf = input_vcf_dir + platform + "/" + sample + ".hg38." + platform + ".vcf.gz"
+	elif platform == "promethion":
+		query_vcf = input_vcf_dir + platform + "/" + sample + "/merge_output.vcf.gz"
+
 	truth_vcf = giab_benchmark_dir + sample + "/" + sample + "_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
 
 	if sample == "HG002" or sample == "HG003" or sample == "HG004":
@@ -116,9 +119,9 @@ def write_results():
 
 
 def main():
-	#for platform in platforms:
-		#for sample in samples:
-			#run_happy(platform, sample)
+	for platform in platforms:
+		for sample in samples:
+			run_happy(platform, sample)
 
 	parse_output()
 	write_results()
