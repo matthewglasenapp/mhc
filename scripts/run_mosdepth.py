@@ -33,7 +33,7 @@ def run_mosdepth(bam_file):
 
 def main():
 	bam_file_paths_list = get_bam_file_paths()
-	#Parallel(n_jobs=24)(delayed(index_bam)(bam_file) for bam_file in bam_file_paths_list)
+	Parallel(n_jobs=24)(delayed(index_bam)(bam_file) for bam_file in bam_file_paths_list)
 	Parallel(n_jobs=6)(delayed(run_mosdepth)(bam_file) for bam_file in bam_file_paths_list)
 
 if __name__ == "__main__":

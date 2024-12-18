@@ -39,7 +39,6 @@ figure <- ggplot(data_filtered, aes(x = base, y = mean_depth)) +
         axis.text.x = element_text(size = 16, angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 16), 
         axis.title = element_text(size = 16, face = "bold")) + 
-  scale_color_manual(values = sample_colors) +  # Apply the color scale
   scale_x_continuous(
     labels = function(x) sprintf("%.2f", x / 1e6),   # Convert bases to Mb and format with 2 decimal places
     breaks = pretty(data_filtered$base, n = 6)   # Generate 6 tick marks on the x-axis
@@ -65,4 +64,4 @@ for (i in 1:nrow(bed_data)) {
 
 figure
 
-ggsave(filename = "c4.pdf", plot = figure, width=169, units = "mm")
+ggsave(filename = "c4.png", plot = figure, width=169, units = "mm")

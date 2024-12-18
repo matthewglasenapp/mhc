@@ -31,14 +31,17 @@ samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01891", 
 
 def run_deepvariant(sample):
     os.chdir(revio_output_dir)
-    run_deepvariant = "singularity exec --bind {}/:/data --bind {}/:/input --bind /hb/scratch/mglasena/MHC/reference:/reference {} /opt/deepvariant/bin/run_deepvariant --model_type=PACBIO --ref=/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa --reads=/input/{}.hg38.revio_marked_duplicates.bam --output_vcf=/data/{}.hg38.revio.vcf.gz --output_gvcf=/data/{}.hg38.revio.g.vcf.gz --num_shards=8".format(revio_output_dir, revio_input_dir, deepvariant_sif, sample, sample, sample)
+    run_deepvariant = "singularity exec --bind {}/:/data --bind {}/:/input --bind /hb/scratch/mglasena/MHC/reference:/reference {} /opt/deepvariant/bin/run_deepvariant --model_type=PACBIO --ref=/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa --reads=/input/{}.hg38.revio_rmdup.bam --output_vcf=/data/{}.hg38.revio.vcf.gz --output_gvcf=/data/{}.hg38.revio.g.vcf.gz --num_shards=8".format(revio_output_dir, revio_input_dir, deepvariant_sif, sample, sample, sample)
     os.system(run_deepvariant)
 
 def run_clair3(sample):
-    input_file = promethion_input_dir + sample + ".hg38.promethion_marked_duplicates.bam"
+    input_file = promethion_input_dir + sample + ".hg38.promethion_rmdup.bam"
     output_dir = promethion_output_dir + sample
     os.system("mkdir -p " + output_dir)
     print("Variant Calling {}".format(input_file))
+
+    index = "samtools index {}".format(input_file)
+    os.system(index)
 
     run_clair3 = "run_clair3.sh --bam_fn={} --ref_fn={} --platform=ont --model_path={} --output={} --threads={}".format(input_file, ref, clair3_model_path, output_dir, threads)
     os.system(run_clair3)
