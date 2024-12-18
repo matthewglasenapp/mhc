@@ -4,18 +4,21 @@ import csv
 import json
 from statistics import mean, stdev
 
-root_dir = "/hb/scratch/mglasena/mhc/"
+root_dir = "/hb/scratch/mglasena/MHC/coverage/"
 
-regions_file = "mhc_regions.bed"
+regions_file = "/hb/scratch/mglasena/MHC/scripts/mhc_regions.bed"
+
+output_dir = "/hb/scratch/mglasena/MHC/results/"
+
+threads = 4
 
 # Coordinates for per-base files
 start_pos = 28000000
 stop_pos = 34000000
 
-per_base_dict = {str(pos): {"pacbio": {}, "promethion": {}} for pos in range(start_pos, stop_pos + 1)}
+per_base_dict = {str(pos): {"revio": [], "promethion": []} for pos in range(start_pos, stop_pos + 1)}
 
-#platforms = ["minion", "promethion", "revio"]
-platforms = ["pacbio", "promethion"]
+platforms = ["revio", "promethion"]
 
 coverage_dict = {platform: {"gene": {}, "exon": {}} for platform in platforms}
 
@@ -25,7 +28,7 @@ sample_list = ['HG002', 'HG003', 'HG004', 'HG005', 'HG01106', 'HG01258', 'HG0192
 # Original 16 samples
 sample_list_hprc = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
 
-biotype_dict_file = "biotype_dict.json"
+biotype_dict_file = "/hb/scratch/mglasena/MHC/scripts/biotype_dict.json"
 
 def parse_mosdepth_per_base(output_file):
 	# 1. Get per-base files
@@ -40,7 +43,7 @@ def parse_mosdepth_per_base(output_file):
 	# 2. Parse per-base files
 	for file in per_base_file_list:
 		prefix = file.split(".per-base.bed.gz")[0].split("/")[-1]
-		intermediate_output_file = "{}_per_base.tsv".format(prefix)
+		intermediate_output_file = "{}{}_per_base.tsv".format(output_dir, prefix)
 		
 		with gzip.open(file, "rt") as f1, open(intermediate_output_file, "w") as f2:
 			for line in f1:
@@ -64,7 +67,7 @@ def parse_mosdepth_per_base(output_file):
 					sliding_index += 1
 
 	# 3. Collate per-base files
-	get_per_base_file_paths = "find {} -type f -name '*_per_base.tsv*' > out_files".format(root_dir)
+	get_per_base_file_paths = "find {} -type f -name '*_per_base.tsv*' > out_files".format(output_dir)
 	os.system(get_per_base_file_paths)
 
 	with open("out_files", "r") as f:
@@ -80,7 +83,7 @@ def parse_mosdepth_per_base(output_file):
 
 			for line in f:
 				base, depth = line.strip().split("\t")
-				per_base_dict[base][platform][sample] = int(depth)
+				per_base_dict[base][platform].append(int(depth))
 
 	# 4. Write output
 	with open(output_file,"w") as outfile:
@@ -91,22 +94,23 @@ def parse_mosdepth_per_base(output_file):
 
 		for platform_name in platforms:
 			for position, platform_data in per_base_dict.items():
-				coverage_list = [platform_data[platform_name][sample] for sample in sample_list]
+				coverage_list = platform_data[platform_name]
 				data = [position, platform_name] + coverage_list
 				writer.writerow(data)
 
 	# 5. Calculate average and standard deviation for depth by base for each platform 
 	# Only for the 16 HPRC samples!!
+	hprc_indices = [sample_list.index(sample) for sample in sample_list_hprc]
 	for platform_name in platforms:
 		metric_file = f"{platform_name}_mean_std_depth.tsv"
 
-		with open(metric_file, "w") as f1:
+		with open(output_dir + metric_file, "w") as f1:
 			writer = csv.writer(f1, delimiter="\t")
 
 			writer.writerow(["base", "mean_depth", "std_depth"])
 
 			for base, platform_data in per_base_dict.items():
-				depths = [platform_data[platform_name][sample] for sample in sample_list_hprc]
+				depths = [platform_data[platform_name][idx] for idx in hprc_indices if idx < len(platform_data[platform_name])]
 				avg_depth = mean(depths)
 				std_depth = stdev(depths)
 
@@ -155,10 +159,10 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 							name = regions_fields[3].split("_")[1]
 							ID = regions_fields[3].split("_")[2]
 							biotype = biotype_dict[ID]
-						elif len(regions_fields[3].split("_")) == 4:
-							name = "_".join(regions_fields[3].split("gene_")[1].split("_")[0:2])
-							ID = regions_fields[3].split("_")[-1]
-							biotype = biotype_dict[ID]
+						elif len(regions_fields[3].split("_")) ==4:
+								name = "_".join(regions_fields[3].split("gene_")[1].split("_")[0:2])
+								ID = regions_fields[3].split("_")[-1]
+								biotype = biotype_dict[ID]
 						else:
 							ID = regions_fields[3].split("_")[1]
 							name = ID
@@ -202,7 +206,7 @@ def write_results():
 	for platform, record_types in coverage_dict.items():
 		for record_type, data in record_types.items():
 			for metric in metrics:
-				output_file = f"{platform}_{record_type}_{metric}.tsv"
+				output_file = "{}{}_{}_{}.tsv".format(output_dir, platform, record_type, metric)
 
 				with open(output_file, "w") as f:
 					writer = csv.writer(f, delimiter="\t")
@@ -223,8 +227,8 @@ def write_results():
 						writer.writerow(row)
 
 def main():
-	#parse_mosdepth_per_base("hla_per_base.csv")
-	parse_mosdepth_regions_thresholds("coverage_dict.json")
+	parse_mosdepth_per_base(output_dir + "hla_per_base.csv")
+	parse_mosdepth_regions_thresholds(output_dir + "coverage_dict.json")
 	write_results()
 
 if __name__ == "__main__":

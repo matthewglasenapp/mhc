@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=deepvariant
+#SBATCH --job-name=genotype
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=mglasena@ucsc.edu
-#SBATCH --output=deepvariant_%A_%a.out
-#SBATCH --error=deepvariant_%A_%a.err
+#SBATCH --output=genotype_%A_%a.out
+#SBATCH --error=genotype_%A_%a.err
 #SBATCH --mem=32G
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -13,12 +13,15 @@
 #SBATCH --qos=pi-jkoc
 #SBATCH --account=pi-jkoc
 
+# For running deepvariant
 module load bcftools
 module load singularity-ce/singularity-ce.4.1.4
+
+# For running Clair3
 #module load miniconda3/3.12
-#conda activate alignment
+#conda activate clair3
 
 array_id=$SLURM_ARRAY_TASK_ID
 export array_id
 
-python3 -u deepvariant.py
+python3 -u genotype.py
