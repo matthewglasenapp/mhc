@@ -79,3 +79,4 @@ figure
 
 # Save the figure
 ggsave(filename = "histogram_bar_plot.png", plot = figure, width = 169, units = "mm")
+ggsave(filename = "histogram_bar_plot.pdf", plot = figure, width = 169, units = "mm")

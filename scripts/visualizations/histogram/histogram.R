@@ -5,7 +5,7 @@ library(ggplot2)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/histogram/")
 
 # Read the data without setting row.names
-data <- read.table("pacbio_genes2.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+data <- read.table("pacbio_classIII.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
 # Convert the data to a long format
 long_data <- as.numeric(unlist(data[, -1])) # Skip the first column if it contains non-numerical data
@@ -34,7 +34,7 @@ figure <- ggplot(plot_data, aes(x = values)) +
   annotate(
     "text",
     x = 15,                     # Center of the first bin (0 to 30)
-    y = first_bin_count + 10,   # Slightly above the bin height
+    y = first_bin_count + 20,   # Slightly above the bin height
     label = paste(first_bin_count),
     color = "black",
     size = 5
@@ -43,14 +43,15 @@ figure <- ggplot(plot_data, aes(x = values)) +
   annotate(
     "text",
     x = 32,                      # Slightly to the right of the line for visibility
-    y = 245,
+    y = 450,
     label = "X = 30",
     hjust = 0,                   # Left-align the text
     color = "red",
-    size = 4
+    size = 3
   )
 
 figure
 
 ggsave(filename = "histogram.png", plot = figure, width=169, units = "mm")
+ggsave(filename = "histogram.pdf", plot = figure, width=169, units = "mm")
 
