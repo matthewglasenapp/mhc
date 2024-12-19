@@ -5,7 +5,7 @@ library(dplyr)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/")
 
 # per-base coverage file
-hla_per_base <- "/Users/matt/Documents/GitHub/mhc/clean_data/pacbio_mean_std_depth.rds"
+hla_per_base <- "/Users/matt/Documents/GitHub/mhc/clean_data/revio_mean_std_depth.rds"
 
 data <- readRDS(hla_per_base)
 
