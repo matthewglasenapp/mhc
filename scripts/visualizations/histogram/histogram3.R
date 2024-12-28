@@ -2,6 +2,8 @@
 library(ggplot2)
 library(dplyr)
 
+setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/histogram/")
+
 # Define maximum value for capping
 max_value <- 400
 
