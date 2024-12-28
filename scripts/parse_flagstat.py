@@ -23,12 +23,11 @@ def create_flagstat_output_dict():
 		with open(file,"r") as f:
 			lines = f.read().splitlines()
 			total = int(lines[0].split("\t")[0])
-			primary = int(lines[1].split("\t")[0])
 			duplicates = int(lines[4].split("\t")[0])
 			percent_duplicates = (duplicates / float(total)) * 100
-			mapped_percent = float(lines[7].split("%")[0])
+			primary_mapped = int(lines[8].split("\t")[0])
 			primary_mapped_percent = float(lines[9].split("%")[0])
-			flagstat_output_dict[sample][platform] = [total, primary, mapped_percent, primary_mapped_percent, percent_duplicates]
+			flagstat_output_dict[sample][platform] = [total, primary_mapped, primary_mapped_percent, duplicates, percent_duplicates]
 
 def write_results():
     # Define output filenames
@@ -36,7 +35,7 @@ def write_results():
     revio_file = "revio_flagstat_results.csv"
 
     # Define column headers
-    headers = ["sample", "total", "primary", "mapped_percent", "primary_mapped_percent", "percent_duplicates"]
+    headers = ["sample", "total", "primary_mapped", "primary_mapped_percent", "duplicates", "percent_duplicates"]
 
     # Write Promethion results
     with open(output_dir + promethion_file, "w", newline="") as prom_file:

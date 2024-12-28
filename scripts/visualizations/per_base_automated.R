@@ -4,7 +4,7 @@ library(ggplot2)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/")
 
 # Example BED file with chr, start, stop, and name
-bed_file <- "probe_gaps.bed"
+bed_file <- "regions3.bed"
 annotations <- read.table(bed_file, header = FALSE, col.names = c("chr", "start", "stop", "name"))
 
 # Ignore the first column (chr) and work with start, stop, and name
@@ -35,13 +35,13 @@ collapsed_data <- collapsed_data %>%
 # MHC Class I Part 2
 #data_filtered <- collapsed_data %>% filter(base >= 30000000 & base <= 30499999)
 # MHC Class I Part 3
-#data_filtered <- collapsed_data %>% filter(base >= 31262000 & base <= 31389999)
+data_filtered <- collapsed_data %>% filter(base >= 31262000 & base <= 31389999)
 #MHC Class II Part 1
 #data_filtered <- collapsed_data %>% filter(base >= 32572500 & base <= 32770000)
 # MHC Class II Part 2
 #data_filtered <- collapsed_data %>% filter(base >= 33064568 & base <= 33129084)
 # MHC Class III
-data_filtered <- collapsed_data %>% filter(base >= 31519479 & base <= 32407181)
+#data_filtered <- collapsed_data %>% filter(base >= 31519479 & base <= 32407181)
  
 # Create the plot
 figure <- ggplot(data_filtered, aes(x = base, y = mean_depth)) +
