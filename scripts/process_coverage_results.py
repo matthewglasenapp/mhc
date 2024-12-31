@@ -6,8 +6,8 @@ targeted_genes_file = "/Users/matt/Documents/GitHub/mhc/bed_files/targeted_genes
 biotype_dict_file = "/Users/matt/Documents/GitHub/mhc/bed_files/biotype_dict.json"
 
 # Ignore HG01891 - failed across all platforms
-# Ignore IHW09118, IHW09245, IHW09364 - low coverage
-#sample_list = ['HG002', 'HG003', 'HG004', 'HG005', 'HG01106', 'HG01258', 'HG01928', 'HG02055', 'HG02630', 'HG03492', 'HG03579', 'IHW09021', 'IHW09049', 'IHW09071', 'IHW09117', 'IHW09122', 'IHW09125', 'IHW09175', 'IHW09198', 'IHW09200', 'IHW09224', 'IHW09251', 'IHW09359', 'IHW09409', 'NA19240', 'NA20129', 'NA21309', 'NA24694', 'NA24695']
+# Ignore IHW09118, IHW09245, IHW09364, IHW09071  - low coverage
+#sample_list = ['HG002', 'HG003', 'HG004', 'HG005', 'HG01106', 'HG01258', 'HG01928', 'HG02055', 'HG02630', 'HG03492', 'HG03579', 'IHW09021', 'IHW09049', 'IHW09117', 'IHW09122', 'IHW09125', 'IHW09175', 'IHW09198', 'IHW09200', 'IHW09224', 'IHW09251', 'IHW09359', 'IHW09409', 'NA19240', 'NA20129', 'NA21309', 'NA24694', 'NA24695']
 
 # Full sample _list
 sample_list = ['HG002', 'HG003', 'HG004', 'HG005', 'HG01106', 'HG01258', 'HG01928', 'HG02055', 'HG02630', 'HG03492', 'HG03579', 'NA19240', 'NA20129', 'NA21309', 'NA24694', 'NA24695', 'IHW09021', 'IHW09049', 'IHW09071', 'IHW09117', 'IHW09118', 'IHW09122', 'IHW09125', 'IHW09175', 'IHW09198', 'IHW09200', 'IHW09224', 'IHW09251', 'IHW09359', 'IHW09409']
@@ -43,7 +43,8 @@ def process_coverage_dict():
         coverage_dict = json.load(json_file2)
 
     global pacbio_gene_dict 
-    pacbio_gene_dict = coverage_dict['pacbio']['gene']
+    pacbio_gene_dict = coverage_dict['revio']['gene']
+    #pacbio_gene_dict = coverage_dict['promethion']['gene']
 
     for gene, data in pacbio_gene_dict.items():
         depth_list = []
@@ -199,7 +200,7 @@ def print_output():
 def main():
     process_coverage_dict()
     compare_groups()
-    #print_output()
+    print_output()
 
 if __name__ == "__main__":
     main()

@@ -13,7 +13,8 @@ hap_py_input_dir = root_dir + "hap_py_input/"
 giab_benchmark_dir = root_dir + "GIAB_benchmark/"
 output_dir = root_dir + "hap_py_results/"
 reference_fasta = hap_py_input_dir + "Homo_sapiens.GRCh38.dna.primary_assembly_renamed.fa"
-regions_file = hap_py_input_dir + "merged_hla_legacy.bed"
+#regions_file = hap_py_input_dir + "merged_hla_legacy.bed"
+regions_file = hap_py_input_dir + "c4b.bed"
 
 # Path to rtg tools
 rtg_path = "/hb/home/mglasena/.conda/envs/happy/bin/rtg"
@@ -66,37 +67,56 @@ def parse_output():
 		if line.startswith("Benchmarking") and "!" in line:
 			current_sample = line.split()[1]
 			current_platform = line.split()[2].strip("()!")
+			print("Processing sample: {}, {}".format(current_sample, current_platform))
 			i += 1
 			continue
 
 		if line.startswith("Benchmarking Summary:"):
-			indel_line = lines[i + 3]
-			snp_line = lines[i + 5]
-			indel_fields = indel_line.split()
-			snp_fields = snp_line.split()
-			indel_TRUTH_TOTAL = indel_fields[2]
-			indel_TRUTH_TP = indel_fields[3]
-			indel_TRUTH_FN = indel_fields[4]
-			indel_QUERY_FP = indel_fields[6]
-			indel_RECALL = indel_fields[10]
-			indel_PRECISION = indel_fields[11]
-			indel_F1 = indel_fields[13]
-			snp_TRUTH_TOTAL = snp_fields[2]
-			snp_TRUTH_TP = snp_fields[3]
-			snp_TRUTH_FN = snp_fields[4]
-			snp_QUERY_FP = snp_fields[6]
-			snp_RECALL = snp_fields[10]
-			snp_PRECISION = snp_fields[11]
-			snp_F1 = snp_fields[13]
+			if lines[i+2].split()[0] == "INDEL" or lines[i+2].split()[0] == "SNP":
+				indel_line = None
+				snp_line = None
+
+				if lines[i+2].split()[0] == "INDEL":
+					indel_line = lines[i + 3]
+					snp_line = lines[i + 5]
+				elif lines[i + 2].split()[0] == "SNP":
+					snp_line = lines[i + 3]
+
+			if snp_line:
+				snp_fields = snp_line.split()
+				snp_TRUTH_TOTAL = snp_fields[2]
+				snp_TRUTH_TP = snp_fields[3]
+				snp_TRUTH_FN = snp_fields[4]
+				snp_QUERY_FP = snp_fields[6]
+				snp_RECALL = snp_fields[10]
+				snp_PRECISION = snp_fields[11]
+				snp_F1 = snp_fields[13]
+				print("SNP F1: {}".format(snp_F1))
+
+			if indel_line:
+				indel_fields = indel_line.split()
+				indel_TRUTH_TOTAL = indel_fields[2]
+				indel_TRUTH_TP = indel_fields[3]
+				indel_TRUTH_FN = indel_fields[4]
+				indel_QUERY_FP = indel_fields[6]
+				indel_RECALL = indel_fields[10]
+				indel_PRECISION = indel_fields[11]
+				indel_F1 = indel_fields[13]
+				print("INDEL F1: {}".format(indel_F1))
 
 			# Assign a single list instead of appending
-			concordance_dict[current_sample][current_platform]["indel"] = [indel_TRUTH_TOTAL, indel_TRUTH_TP, indel_TRUTH_FN, indel_QUERY_FP, indel_RECALL, indel_PRECISION, indel_F1]
 			concordance_dict[current_sample][current_platform]["snp"] = [snp_TRUTH_TOTAL, snp_TRUTH_TP, snp_TRUTH_FN, snp_QUERY_FP, snp_RECALL, snp_PRECISION, snp_F1]
+			if indel_line:
+				concordance_dict[current_sample][current_platform]["indel"] = [indel_TRUTH_TOTAL, indel_TRUTH_TP, indel_TRUTH_FN, indel_QUERY_FP, indel_RECALL, indel_PRECISION, indel_F1]
+			elif not indel_line:
+				concordance_dict[current_sample][current_platform]["indel"] = ["NA"]*7
 
-			i += 6
+			if indel_line:
+				i+= 6
+			else:
+				i+=4
 			continue
 
-		# Move to the next line
 		i += 1
 
 	return concordance_dict
@@ -116,7 +136,6 @@ def write_results():
 				for type, metrics in types.items():
 					row = [sample, platform, type] + metrics
 					writer.writerow(row)
-
 
 def main():
 	for platform in platforms:
