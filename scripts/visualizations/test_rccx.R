@@ -25,7 +25,7 @@ annotations <- annotations %>%
   )
 
 # Per-base coverage file
-hla_per_base <- "/Users/matt/Documents/GitHub/mhc/clean_data/pacbio_mean_std_depth.rds"
+hla_per_base <- "/Users/matt/Documents/GitHub/mhc/clean_data/revio_mean_std_depth.rds"
 data <- readRDS(hla_per_base)
 
 # Collapse data into 100-base-pair windows
