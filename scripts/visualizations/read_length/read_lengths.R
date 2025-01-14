@@ -22,7 +22,7 @@ ihw_samples <- c("IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118",
 
 # Process box plot data
 setwd(read_length_dir)
-results_data <- read.csv("results.csv")
+results_data <- read.csv("results2.csv")
 
 process_boxplot_data <- function(data, variable, rename_to) {
   data %>%
@@ -64,9 +64,8 @@ create_boxplot <- function(data, y_var, y_label, y_scale = scales::comma) {
 median_read_length_plot <- create_boxplot(read_length_data, "median_read_length", "Median Read Length")
 proportion_on_target_plot <- create_boxplot(
   proportion_data, 
-  "proportion_on_target", 
-  "Enrichment Efficiency (%)",
-  y_scale = scales::percent_format(accuracy = 0.1)
+  "Enrichment", 
+  "Fold Enrichment"
 )
 avg_on_target_depth_plot <- create_boxplot(depth_data, "avg_on_target_depth", "Average On-Target Depth")
 
