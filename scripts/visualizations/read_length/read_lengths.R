@@ -177,7 +177,7 @@ scatter_plot_ihw <- ggplot(ihw_data, aes(x = pacbio_coverage, y = promethion_cov
 
 # Combine all plots
 combined_plot <- (
-  (median_read_length_plot / proportion_on_target_plot / avg_on_target_depth_plot) | 
+  (median_read_length_plot / avg_on_target_depth_plot / proportion_on_target_plot) | 
     (scatter_plot_hprc / scatter_plot_ihw)
 )
 

@@ -5,7 +5,7 @@ library(patchwork)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/")
 
 # Example BED file with chr, start, stop, and name
-bed_file <- "probe_gaps2.bed"
+bed_file <- "regions3.bed"
 annotations <- read.table(bed_file, header = FALSE, col.names = c("chr", "start", "stop", "name"))
 
 # Process annotation data
@@ -39,13 +39,13 @@ process_data <- function(file_path, filter_range) {
 # Filter range for visualization
 # Modify this to toggle between different regions of interest
 # MHC Class I Part 1
-# filter_range <- c(29720774, 30016539)
+#filter_range <- c(29720774, 30016539)
 
 # MHC Class I Part 2
-# filter_range <- c(30000000, 30499999)
+#filter_range <- c(30000000, 30499999)
 
 # MHC Class I Part 3
-# filter_range <- c(31262000, 31389999)
+filter_range <- c(31262000, 31389999)
 
 # MHC Class II Part 1
 # filter_range <- c(32572500, 32770000)
@@ -54,7 +54,7 @@ process_data <- function(file_path, filter_range) {
 # filter_range <- c(33064568, 33129084)
 
 # MHC Class III
-filter_range <- c(31519479, 32407181)
+#filter_range <- c(31519479, 32407181)
 
 
 # Process data for Revio and Promethion

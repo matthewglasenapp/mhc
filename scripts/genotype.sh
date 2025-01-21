@@ -8,7 +8,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --time=3-0
-#SBATCH --array=0-31%5
+#SBATCH --array=0-32%5
 #SBATCH --partition=lab-colibri
 #SBATCH --qos=pi-jkoc
 #SBATCH --account=pi-jkoc

@@ -53,14 +53,36 @@ def index_vcf(sample):
     os.system(tabix)
     os.system(index)
 
+def phase_and_haplotag(sample):
+    # input_vcf = revio_output_dir + sample + ".hg38.revio.vcf.gz"
+    # input_bam = revio_input_dir + sample + ".hg38.revio_marked_duplicates.bam"
+    # output_vcf = revio_output_dir + sample + ".hg38.revio.phased.vcf.gz"
+    # output_bam = revio_input_dir + sample + ".hg38.revio_marked_duplicates.phased.bam"
+    input_vcf = promethion_output_dir + sample + "/merge_output.vcf.gz"
+    input_bam = promethion_input_dir + sample + ".hg38.promethion_marked_duplicates.bam"
+    output_vcf = promethion_output_dir + sample + "/" + sample + ".hg38.promethion.phased.vcf.gz"
+    output_bam = promethion_input_dir + sample + ".hg38.promethion_marked_duplicates.phased.bam"
+    phase = "whatshap phase --ignore-read-groups --output {} --reference {} {} {}".format(output_vcf, ref, input_vcf, input_bam)
+    index = "bcftools index {}".format(output_vcf)
+    tabix = "tabix {}".format(output_vcf)
+    haplotag = "whatshap haplotag --ignore-read-groups --output {} --reference {} {} {}".format(output_bam, ref, output_vcf, input_bam)
+    stats = "whatshap stats --block-list={} --gtf={} {}".format(sample + "_promethion_haploblocks.tsv", sample + "_promethion_haploblocks.gtf", output_vcf)
+
+    os.system(phase)
+    os.system(index)
+    os.system(tabix)
+    os.system(haplotag)
+    os.system(stats)
+
 def main():
     array_id = os.environ["array_id"]
     print("Array ID: {}".format(array_id))
     sample = samples[int(array_id)]
     print(sample)
     #run_deepvariant(sample)
-    run_clair3(sample)
+    #run_clair3(sample)
     #index_vcf(sample)
+    phase_and_haplotag(sample)
 
 if __name__ == "__main__":
     main()

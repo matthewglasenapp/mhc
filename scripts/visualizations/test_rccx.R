@@ -1,87 +1,132 @@
 library(tidyverse)
 library(ggplot2)
+library(gggenes)
+library(patchwork)
 
 # Set working directory (adjust as needed)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/")
 
-# Example BED file with chr, start, stop, and name
+# File paths for coverage data
+revio_file <- "/Users/matt/Documents/GitHub/mhc/clean_data/revio_mean_std_depth.rds"
+promethion_file <- "/Users/matt/Documents/GitHub/mhc/clean_data/promethion_mean_std_depth.rds"
+
+# Filter range for visualization
+filter_range <- c(31970000, 32118000)  # Region of interest
+
+# Load gene annotations
 bed_file <- "class_III_rccs.bed"
-annotations <- read.table(bed_file, header = FALSE, col.names = c("chr", "start", "stop", "name"))
+annotations <- read.table(
+  bed_file, header = TRUE, sep = "\t",
+  col.names = c("chr", "start", "stop", "gene", "strand", "y")
+)
 
-# Ignore the first column (chr) and work with start, stop, and name
+# Debug: Check the annotations data
+print("Debugging Annotations Data:")
+print(head(annotations))
+
+# Reorder genes for plotting and preserve legend order
 annotations <- annotations %>%
-  select(start, stop, name) %>%
   mutate(
-    midpoint = (start + stop) / 2,  # Calculate midpoint for x-axis
-    name = gsub("\\\\n", "\n", name)  # Convert literal \n to actual newline
-  )
+    plot_order = ifelse(gene == "STK19", 1, 0),  # STK19 plotted last
+    gene = factor(gene, levels = unique(gene))  # Preserve legend order (left-to-right appearance)
+  ) %>%
+  arrange(plot_order, start) %>%
+  mutate(y = 1)  # Keep all genes on the same y-level
 
-# Assign y-levels to stagger rectangles and calculate midpoint_y
-annotations <- annotations %>%
-  mutate(
-    ymin = seq(-40, by = -20, length.out = n()),  # Start ymin at -40 and decrement by 20
-    ymax = ymin + 15,  # Set ymax based on ymin
-    midpoint_y = (ymin + ymax) / 2  # Calculate the midpoint for y-axis
-  )
+# Function to process and filter coverage data
+process_data <- function(file_path, filter_range, platform_name) {
+  data <- readRDS(file_path) %>%
+    mutate(window = floor(base / 100) * 100 + 50) %>%
+    group_by(window) %>%
+    summarize(
+      mean_depth = mean(mean_depth, na.rm = TRUE),
+      std_depth = mean(std_depth, na.rm = TRUE)
+    ) %>%
+    rename(base = window) %>%
+    filter(base >= filter_range[1] & base <= filter_range[2]) %>%
+    mutate(platform = platform_name)  # Add platform identifier
+  
+  return(data)
+}
 
-# Per-base coverage file
-hla_per_base <- "/Users/matt/Documents/GitHub/mhc/clean_data/revio_mean_std_depth.rds"
-data <- readRDS(hla_per_base)
+# Process coverage data for Revio and PromethION
+revio_data <- process_data(revio_file, filter_range, "Revio")
+promethion_data <- process_data(promethion_file, filter_range, "PromethION")
 
-# Collapse data into 100-base-pair windows
-collapsed_data <- data %>%
-  mutate(window = floor(base / 100) * 100 + 50) %>%  # Create windows centered at midpoints
-  group_by(window) %>%
-  summarize(
-    mean_depth = mean(mean_depth),
-    std_depth = mean(std_depth)
-  )
+# Combine coverage data for stacked bar plot
+combined_data <- bind_rows(revio_data, promethion_data)
 
-# Rename 'window' to 'base' for consistency
-collapsed_data <- collapsed_data %>%
-  rename(base = window)
+# Debug: Check combined coverage data
+print("Debugging Combined Coverage Data:")
+print(head(combined_data))
 
-# Filter data for the region of interest
-data_filtered <- collapsed_data %>%
-  filter(base >= 31970000 & base <= 32118000)
+# Explicitly reorder platforms for legend consistency
+combined_data$platform <- factor(combined_data$platform, levels = c("PromethION", "Revio"))
 
-# Create the plot
-figure <- ggplot(data_filtered, aes(x = base, y = mean_depth)) +
-  geom_line(size = 0.75) +
+# Create the stacked bar plot for mean coverage depth
+coverage_plot <- ggplot(combined_data, aes(x = base, y = mean_depth, fill = platform)) +
+  geom_bar(stat = "identity", position = "stack", width = 100, alpha = 1) +  # Align width to 100bp bins, remove transparency
+  scale_fill_manual(
+    values = c("PromethION" = "blue", "Revio" = "red"),  # Corrected color mapping
+    labels = c("PromethION", "Revio")
+  ) +
   xlab("Position on Chromosome 6 (Mb)") +
   ylab("Mean Coverage Depth") +
-  theme(panel.background = element_blank()) +
+  theme_classic() +
   theme(
-    panel.border = element_blank(),
-    axis.line = element_line(colour = "black", linewidth = 1),
     axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
-    axis.text.y = element_text(size = 12),
-    axis.title = element_text(size = 12, face = "bold")
+    axis.title = element_text(size = 12, face = "bold"),
+    panel.grid = element_blank(),  # Ensure no grid lines
+    legend.position = "bottom",  # Place the legend below the plot
+    legend.direction = "vertical",  # Stack legend items vertically
+    legend.title = element_blank(),
+    legend.text = element_text(size = 9)  # Slightly smaller font for legend
   ) +
   scale_x_continuous(
     labels = function(x) sprintf("%.2f", x / 1e6),  # Convert to Mb
-    breaks = pretty(data_filtered$base, n = 10)
+    breaks = pretty(filter_range, n = 10)
   ) +
-  scale_y_continuous(
-    limits = c(-200, max(data_filtered$mean_depth)),  # Extend the y-axis below 0
-    breaks = c(0, pretty(seq(0, max(data_filtered$mean_depth), length.out = 5))),  # Custom y-axis breaks
-    expand = c(0, 0)
+  scale_y_continuous(expand = c(0, 0))
+
+# Debug: Check the coverage plot
+print("Rendering Coverage Depth Plot:")
+print(coverage_plot)
+
+# Create the gggenes annotation plot
+annotation_plot <- ggplot(annotations, aes(
+  xmin = start, xmax = stop, y = y, fill = gene, forward = strand == "+"
+)) +
+  geom_hline(yintercept = 1, color = "grey", linetype = "solid", size = 0.5) +  # Add the grey line first
+  geom_gene_arrow(
+    color = "black",  # Darker outline
+    size = 0.7,  # Thicker line weight
+    alpha = 1
   ) +
-  geom_rect(
-    data = annotations,
-    aes(xmin = start, xmax = stop, ymin = ymin, ymax = ymax),
-    inherit.aes = FALSE,  # Prevent inheritance of aesthetics from ggplot()
-    size = 0.5, color = "black", fill = NA
-  ) +
-  geom_text(
-    data = annotations,
-    aes(x = stop + 1000, y = midpoint_y, label = name),  # Use midpoint_y for vertical centering
-    inherit.aes = FALSE,  # Prevent inheritance of aesthetics from ggplot()
-    color = "black", hjust = 0, vjust = 0.5, size = 3.25
+  geom_gene_label(aes(label = gene), size = 4) +  # Adjusted size for visibility
+  scale_fill_brewer(palette = "Set3") +  # Use Set3 color palette
+  theme_void() +  # Completely remove all axis lines and ticks
+  theme(
+    legend.position = "right",  # Legend on the right
+    legend.title = element_blank(),
+    legend.text = element_text(size = 9),  # Smaller font for gene legend
+    legend.key.size = unit(0.6, "cm"),  # Slightly smaller legend boxes
+    legend.margin = margin(10, 10, 10, 10),  # Add margin around legend
+    plot.margin = margin(10, 10, 10, 10)  # Add margin around the plot
   )
 
-# Display the figure
-print(figure)
+# Debug: Check the annotation plot
+print("Rendering gggenes Annotation Plot:")
+print(annotation_plot)
+
+# Combine the annotation and coverage plots
+final_plot <- annotation_plot / coverage_plot +
+  plot_layout(heights = c(1, 2), guides = "collect")  # Ensure guides are properly arranged
+
+# Display the final combined plot
+print(final_plot)
 
 
-ggsave(filename = "rccx.png", plot = figure, width=169, units = "mm")
+
+
+ggsave(filename = "rccx.png", plot = final_plot, width=169, units = "mm")
+ggsave(filename = "rccx.pdf", plot = final_plot, width=169, units = "mm")
