@@ -4,11 +4,13 @@ import json
 from joblib import Parallel, delayed
 
 haploblock_dir = "/hb/scratch/mglasena/MHC/scripts/haploblocks/"
-genes_bed = "hla_captured_genes.bed"
+#genes_bed = "hla_captured_genes.bed"
+genes_bed = "test.bed"
 output_csv = "phased_genes.tsv"
 output_json = "gene_haploblock_dict.json"
 
 samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01891", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
+#samples = ["HG002"]
 
 genes_dict = dict()
 haploblock_dict = {sample: [] for sample in samples}
@@ -31,15 +33,17 @@ def parse_haploblocks(sample):
     haploblock_lists = []
 
     for platform in platforms:
-        haploblock_file = haploblock_dir + sample + "_" + platform + "_haploblocks.gtf"
+        haploblock_file = haploblock_dir + sample + "_" + platform + "_haploblocks.tsv"
         haploblocks = open(haploblock_file, "r").read().splitlines()
         platform_haploblock_list = []
-        for line in haploblocks:
+        for line in haploblocks[1:]:
             fields = line.split("\t")
+            chromosome = fields[1]
             start = int(fields[3]) - 1
             stop = int(fields[4])
-            if stop > hla_start:
-                platform_haploblock_list.append([start, stop])
+            if chromosome == "chr6":
+                if stop > hla_start:
+                    platform_haploblock_list.append([start, stop])
         haploblock_lists.append(platform_haploblock_list)
 
     return sample, haploblock_lists[0], haploblock_lists[1]
@@ -74,6 +78,7 @@ def evaluate_gene_haploblocks(sample):
                 #print(f"Block: {block_start}-{block_stop}, Gene: {gene_start}-{gene_stop}")
                 #print(f"Gene {gene} is fully contained in block {block_start}-{block_stop}")
                 promethion_gene_list.append(gene)
+                print("Gene {}:{}-{} falls within haploblock {}-{}".format(gene, gene_start, gene_stop, block_start, block_stop))
                 break
 
     return sample, revio_gene_list, promethion_gene_list
@@ -110,4 +115,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
