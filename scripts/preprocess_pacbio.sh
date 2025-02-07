@@ -12,8 +12,8 @@
 #SBATCH --qos=pi-jkoc
 #SBATCH --account=pi-jkoc
 
-module load miniconda3
-conda activate analysis
+# module load miniconda3
+# conda activate analysis
 
 #BAM="/hb/groups/cornejo_lab/HLA_hybrid_capture/Pacbio/20240711_Twist-HLA-Panel/HiFiBam/m84039_240622_113450_s1.hifi_reads.bc1001--bc1001.bam"
 #bam2fastq -j 24 $BAM -o HG002
@@ -43,5 +43,15 @@ conda activate analysis
 # --in HG002.fastq.gz \
 # --out HG002_trimmed.fastq.gz
 
+#module load fastqc/0.12.1
+#fastqc --memory 5000 HG002_trimmed.fastq.gz
+
+module load cutadapt/4.4
+cutadapt \
+-j 24 \
+-a "A{10}N{90}" \
+-o HG002_trimmed_polyA.fastq.gz \
+HG002.fastq.gz
+
 module load fastqc/0.12.1
-fastqc --memory 5000 HG002_trimmed.fastq.gz
+fastqc --memory 5000 HG002_trimmed_polyA.fastq.gz
