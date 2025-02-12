@@ -299,7 +299,7 @@ class Samples:
 		
 		trgt_cmd = "trgt genotype --threads {threads} --genome {reference_genome} --reads {input_file} --repeats {repeat_file} --output-prefix {output_prefix} --karyotype {karyotype} --preset targeted".format(threads = max_threads, reference_genome = reference_fasta, input_file = input_bam, repeat_file = pbtrgt_repeat_file, output_prefix = output_prefix, karyotype = self.sample_karyotype)
 		
-		#subprocess.run(trgt_cmd, shell=True, check=True)
+		subprocess.run(trgt_cmd, shell=True, check=True)
 		
 		sort_cmd = "bcftools sort -O z -o {output_file} {input_file}".format(output_file = output_prefix + ".sorted.vcf.gz", input_file = output_prefix + ".vcf.gz")
 
