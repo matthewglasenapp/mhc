@@ -46,7 +46,7 @@ sample_dict = {
 }
 
 # Max threads available for parallelization
-max_threads = 24
+max_threads = 8
 
 # Transposase mosaic end binding sequence
 # Adapters and barcodes were removed by PacBio with lima
@@ -244,7 +244,10 @@ class Samples:
 				sample=self.sample_ID
 				)
 
-		subprocess.run(deepvariant_cmd, shell=True, check=True)
+		deepvariant_log = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".deepvariant.log")
+
+		with open(deepvariant_log, "w") as log_file:
+			subprocess.run(deepvariant_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
 		print("VCF written to {}".format(output_vcf))
 		print("GVCF written to {}".format(output_gvcf))
@@ -269,12 +272,12 @@ class Samples:
 		
 		subprocess.run(index_svsig_cmd, shell=True, check=True)
 
-		pbsv_call_cmd = "pbsv call -j {threads} --region chr6 --hifi {reference_genome} {input_file} {output_file}".format(threads = max_threads, input_file = output_svsig, output_file = output_vcf)
+		pbsv_call_cmd = "pbsv call -j {threads} --region chr6 --hifi {reference_genome} {input_file} {output_file}".format(threads = max_threads, reference_genome = reference_fasta, input_file = output_svsig, output_file = output_vcf)
 		
 		subprocess.run(pbsv_call_cmd, shell=True, check=True)
 
-		compress_cmd = "bgzip -c {input_file}".format(input_file = output_vcf)
-		index_vcf_cmd = "tabix -p vcf {input_file}".format(input_file = output_vcf + ".gz")
+		compress_cmd = "bgzip -c {input_file} > {input_file}.gz".format(input_file = output_vcf)
+		index_vcf_cmd = "tabix -p vcf {input_file}.gz".format(input_file = output_vcf)
 		
 		subprocess.run(compress_cmd, shell=True, check=True)
 		subprocess.run(index_vcf_cmd, shell=True, check=True)
@@ -294,11 +297,19 @@ class Samples:
 		
 		os.chdir(Samples.pbtrgt_dir)
 		
-		trgt_cmd = "trgt genotype --threads {threads} --genome {reference_genome} --reads {input_file} --repeats {repeat_file} --output-prefix {output_prefix} --karyotype {karyotype} --preset targeted".format(threads = max_threads, reference_genome = reference_fasta, input_file = input_bam, output_prefix = output_prefix, karyotype = self.sample_karyotype)
+		trgt_cmd = "trgt genotype --threads {threads} --genome {reference_genome} --reads {input_file} --repeats {repeat_file} --output-prefix {output_prefix} --karyotype {karyotype} --preset targeted".format(threads = max_threads, reference_genome = reference_fasta, input_file = input_bam, repeat_file = pbtrgt_repeat_file, output_prefix = output_prefix, karyotype = self.sample_karyotype)
 		
-		subprocess.run(trgt_cmd, shell=True, check=True)
+		#subprocess.run(trgt_cmd, shell=True, check=True)
 		
-		os.chdir(output_dir)
+		sort_cmd = "bcftools sort -O z -o {output_file} {input_file}".format(output_file = output_prefix + ".sorted.vcf.gz", input_file = output_prefix + ".vcf.gz")
+
+		subprocess.run(sort_cmd, shell=True, check=True)
+
+		os.rename(output_prefix + ".sorted.vcf.gz", output_prefix + ".vcf.gz")
+
+		index_cmd = "tabix -p vcf {input_file}".format(input_file = output_prefix + ".vcf.gz")
+		
+		subprocess.run(index_cmd, shell=True, check=True)
 
 		print("TR VCF written to {}".format(Samples.pbtrgt_dir + output_prefix + ".vcf.gz"))
 		print("\n\n")
@@ -317,7 +328,7 @@ class Samples:
 
 		output_vcf = os.path.join(Samples.merged_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.vcf.gz")
 		
-		concat_cmd = "bcftools concat --allow-overlaps {SNV_vcf} {SV_vcf} {TR_vcf} | grep -v 'chrX|chrY' | grep -v 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -D --fasta-ref {reference_genome} | bcftools sort | bgzip > {output_file}".format(SNV_vcf = input_snv, SV_vcf = input_SV, TR_vcf = input_TR, reference_genome = reference_fasta, output_file = output_vcf)
+		concat_cmd = "bcftools concat --allow-overlaps {SNV_vcf} {SV_vcf} {TR_vcf} | grep -v 'chrX|chrY' | grep -v 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_genome} | bcftools sort | bgzip > {output_file}".format(SNV_vcf = input_snv, SV_vcf = input_SV, TR_vcf = input_TR, reference_genome = reference_fasta, output_file = output_vcf)
 		
 		subprocess.run(concat_cmd, shell=True, check=True)
 
@@ -343,10 +354,13 @@ class Samples:
 		output_summary_file = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".phased.summary.txt")
 		output_blocks_file = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
 		output_stats_file = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".phased.stats.txt")
-		
+
 		hiphase_cmd = "hiphase --threads {threads} --ignore-read-groups --reference {reference_genome} --bam {in_bam} --output-bam {out_bam} --vcf {in_vcf} --output-vcf {out_vcf} --stats-file {stats_file} --blocks-file {blocks_file} --summary-file {summary_file}".format(threads = max_threads, reference_genome = reference_fasta, in_bam = input_bam, out_bam = output_bam, in_vcf = input_vcf, out_vcf = output_vcf, stats_file = output_stats_file, blocks_file = output_blocks_file, summary_file = output_summary_file)
 		
-		subprocess.run(hiphase_cmd, shell=True, check=True)
+		hiphase_log = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".hiphase.log")
+
+		with open(hiphase_log, "w") as log_file:
+			subprocess.run(hiphase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
 		print("Phased VCF written to: {}".format(output_vcf))
 		print("Haplotagged BAM written to: {}".format(output_bam))
@@ -361,13 +375,13 @@ def main():
 
 	sample_ID = "HG002"
 	sample = Samples(sample_ID, sample_dict[sample_ID][0], sample_dict[sample_ID][1])
-	# sample.convert_bam_to_fastq()
-	# sample.mark_duplicates()
-	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-	# sample.trim_adapters()
-	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-	# sample.align_to_reference()
-	# sample.filter_reads()
+	sample.convert_bam_to_fastq()
+	sample.mark_duplicates()
+	sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
+	sample.trim_adapters()
+	sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
+	sample.align_to_reference()
+	sample.filter_reads()
 	sample.call_variants()
 	sample.call_structural_variants()
 	sample.genotype_tandem_repeats()
