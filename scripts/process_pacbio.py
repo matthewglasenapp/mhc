@@ -201,6 +201,10 @@ class Samples:
 		samtools_cmd = "samtools view -@ {threads} -b {input_file} chr6 > '{output_file}'".format(threads = max_threads, input_file = input_bam, output_file = output_bam)
 		
 		subprocess.run(samtools_cmd, shell=True, check=True)
+
+		index_cmd = "samtools index {input_file}".format(input_file = output_bam)
+
+		subprocess_run(index_cmd, shell=True, check=True)
 		
 		print("Filtered BAM records written to: {}".format(output_bam))
 		print("\n\n")
@@ -231,6 +235,7 @@ class Samples:
 				--reads=/input/{sample}.dedup.trimmed.hg38.chr6.bam \
 				--output_vcf=/data/{sample}.dedup.trimmed.hg38.chr6.SNV.vcf.gz \
 				--output_gvcf=/data/{sample}.dedup.trimmed.hg38.chr6.SNV.g.vcf.gz \
+				--regions chr6 \
 				--num_shards=8
 			""".format(
 				binds=bind_flags,
