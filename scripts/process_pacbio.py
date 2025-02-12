@@ -204,7 +204,7 @@ class Samples:
 
 		index_cmd = "samtools index {input_file}".format(input_file = output_bam)
 
-		subprocess_run(index_cmd, shell=True, check=True)
+		subprocess.run(index_cmd, shell=True, check=True)
 		
 		print("Filtered BAM records written to: {}".format(output_bam))
 		print("\n\n")
