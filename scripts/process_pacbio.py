@@ -5,22 +5,35 @@ import sys
 
 """
 Work Flow
-
-1. bam2fastq
-2. pbmarkdup
-3. cutadapt
-4. pbmm2
-5. DeepVariant
-6. pbsv discover
-7. pbsv call
-8. pbtrgt
-9. HiPhase
+1. Check that all required bioinformatics tools are installed and executable
+2. Convert raw HiFi reads to FASTQ format bam2fastq
+3. Remove PCR duplicates with pbmarkdup
+4. Run fastqc on the raw deduplicated reads 
+5. Trim adapter sequences and polyA tails with cutadapt
+6. Run fastqc on the trimmed reads to verify removal of TE and polyA sequences 
+7. Map reads to GRCh38 reference genome with pbmm2
+8. Filter for reads mapping to chr6 
+9. Call SNVs and small INDELS with DeepVariant
+10. Call structural variants with pbsv discover and pbsv call
+11. Genotype tandem repeats with pbtrgt
+12. Merge vcfs from DeepVariant, pbsv, and pbtrgt
+13. Phase the merged vcf with HiPhase
 """
 
-# Try to run with as few compute resources as possible and document
-# Document the size of data (average per sample) at each step.
-# One sample takes X amount of time on Y core with Z CPU/RAM 
-# Run time python3 -u process_pacbio.py with 24 CPU, 60 GB RAM
+"""
+Script Details:
+
+	1. The hg 38 fasta reference "GCA_000001405.15_GRCh38_no_alt_analysis_set.fa" and appropriate index file(s) are contained in /current_working_dir/reference.
+
+	2. A DeepVariant Singularity Image Format (sif) file is contained in /current_working_dir/deepvariant_sif. You must build this file on your own machine. Modify deepvariant_cmd in the call_variants() function if you are not using Singularity to run DeepVariant. 
+
+	3. The raw HiFi reads are contained in /current_working_dir/raw_hifi_reads/. The files are named <sample_ID>.hifi_reads.bam. To customize this, edit the constructor of the Samples class. 
+
+	4. The repeat bed files required for pbsv (human_GRCh38_no_alt_analysis_set.trf.bed) and pbtrgt (polymorphic_repeats.hg38.bed) are contained within /current_working_dir/repeats_bed/
+
+	5. The default is set to use 6 threads. Change the max_threads variable to customize
+
+"""
 
 # set input directory to the current working directory where the script should be run
 input_dir = os.getcwd()
@@ -30,46 +43,87 @@ output_dir = os.path.join(input_dir, "processed_data")
 os.makedirs(output_dir, exist_ok=True)
 
 # Input file paths
-# Someone reccomends using fasta with no alternate contigs.
-# GRCh38 tandem repeat bed file for pbsv
-# Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
-# Repeat definition file for pbtrgt
-# Downloaded from https://zenodo.org/records/8329210
+
+# Use reference fasta with no alternate contigs.
 reference_fasta = os.path.join(input_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
+
+# DeepVariant sif file
 deepvariant_sif = os.path.join(input_dir, "deepvariant_sif/deepvariant.sif")
+
+# GRCh38 tandem repeat mask file for pbsv
+# Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
 tandem_repeat_bed = os.path.join(input_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
+
+# GRCh38 tandem repeat definition file for pbtrgt
+# Downloaded from https://zenodo.org/records/8329210
 pbtrgt_repeat_file = os.path.join(input_dir, "repeats_bed/polymorphic_repeats.hg38.bed")
 
-# Sample ID: [Read Group String, Karyotype]
+# Dictionary of samples to process.
+# Sample ID: Read Group String
 sample_dict = {
-"HG002": [r"@RG\tID:m84039_240622_113450_s1\tSM:HG002", "XY"]
+	"HG002" : "@RG\tID:m84039_240622_113450_s1\tSM:HG002",
+	"HG003" : "@RG\tID:m84039_240622_113450_s1\tSM:HG003",
+	"HG004" : "@RG\tID:m84039_240622_113450_s1\tSM:HG004",
+	"HG005" : "@RG\tID:m84039_240622_113450_s1\tSM:HG005",
+	"HG01106" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01106",
+	"HG01258" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01258",
+	"HG01891" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01891",
+	"HG01928" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01928",
+	"HG02055" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02055",
+	"HG02630" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02630",
+	"HG03492" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03492",
+	"HG03579" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03579",
+	"IHW09021" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09021",
+	"IHW09049" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09049",
+	"IHW09071" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09071",
+	"IHW09117" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09117",
+	"IHW09118" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09118",
+	"IHW09122" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09122",
+	"IHW09125" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09125",
+	"IHW09175" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09175",
+	"IHW09198" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09198",
+	"IHW09200" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09200",
+	"IHW09224" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09224",
+	"IHW09245" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09245",
+	"IHW09251" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09251",
+	"IHW09359" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09359",
+	"IHW09364" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09364",
+	"IHW09409" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09409",
+	"NA19240" : "@RG\tID:m84039_240622_113450_s1\tSM:NA19240",
+	"NA20129" : "@RG\tID:m84039_240622_113450_s1\tSM:NA20129",
+	"NA21309" : "@RG\tID:m84039_240622_113450_s1\tSM:NA21309",
+	"NA24694" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24694",
+	"NA24695" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24695"
 }
 
 # Max threads available for parallelization
-max_threads = 8
+max_threads = 6
 
 # Transposase mosaic end binding sequence
-# Adapters and barcodes were removed by PacBio with lima
 # The TE sequence (and its reverse complement) introduced during tagmentation still needs to be removed
+# Adapters and barcodes were removed by PacBio with lima
 me = "AGATGTGTATAAGAGACAG"
 me_rc = "CTGTCTCTTATACACATCT"
 
+# Ensure all required tools are installed and executable
 def check_required_commands():    
 	print("Checking the installation status of the required bioinformatics tools!")
 
 	required_commands = [
 		"bam2fastq",
-		"pbmarkdup",
-		"pigz",
-		"fastqc",
+		"bcftools",
+		"bgzip",
 		"cutadapt",
+		"fastqc",
+		"hiphase",
+		"pbmarkdup",
 		"pbmm2",
+		"pbsv",
+		"pigz",
 		"samtools",
 		"singularity",
-		"pbsv",
-		"trgt",
-		"bcftools",
-		"hiphase"
+		"tabix",
+		"trgt"
 	]
 
 	missing_commands = []
@@ -84,7 +138,6 @@ def check_required_commands():
 		print("\n\n")
 
 class Samples:
-	raw_hifi_reads_dir = os.path.join(output_dir, "raw_hifi_reads")
 	fastq_raw_dir = os.path.join(output_dir, "fastq_raw")
 	fastq_rmdup_dir = os.path.join(output_dir, "fastq_rmdup")
 	fastq_rmdup_cutadapt_dir = os.path.join(output_dir, "fastq_rmdup_cutadapt")
@@ -95,11 +148,10 @@ class Samples:
 	merged_vcf_dir = os.path.join(output_dir, "merged_vcf")
 	phased_vcf_dir = os.path.join(output_dir, "phased_vcf")
 
-	def __init__(self, sample_ID, read_group_string, karyotype):
+	def __init__(self, sample_ID, read_group_string):
 		self.sample_ID = sample_ID
 		self.unmapped_bam = os.path.join(input_dir, "raw_hifi_reads", self.sample_ID + ".hifi_reads.bam")
 		self.read_group_string = read_group_string
-		self.sample_karyotype = karyotype
 
 		for directory in [Samples.fastq_raw_dir, Samples.fastq_rmdup_dir, Samples.fastq_rmdup_cutadapt_dir, Samples.mapped_bam_dir, Samples.deepvariant_dir, Samples.pbsv_dir, Samples.pbtrgt_dir, Samples.merged_vcf_dir, Samples.phased_vcf_dir]:
 			os.makedirs(directory, exist_ok=True)
@@ -244,6 +296,7 @@ class Samples:
 				sample=self.sample_ID
 				)
 
+		# Log DeepVariant in own output file so it doesn't clog up STDOUT
 		deepvariant_log = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".deepvariant.log")
 
 		with open(deepvariant_log, "w") as log_file:
@@ -297,7 +350,7 @@ class Samples:
 		
 		os.chdir(Samples.pbtrgt_dir)
 		
-		trgt_cmd = "trgt genotype --threads {threads} --genome {reference_genome} --reads {input_file} --repeats {repeat_file} --output-prefix {output_prefix} --karyotype {karyotype} --preset targeted".format(threads = max_threads, reference_genome = reference_fasta, input_file = input_bam, repeat_file = pbtrgt_repeat_file, output_prefix = output_prefix, karyotype = self.sample_karyotype)
+		trgt_cmd = "trgt genotype --threads {threads} --genome {reference_genome} --reads {input_file} --repeats {repeat_file} --output-prefix {output_prefix} --preset targeted".format(threads = max_threads, reference_genome = reference_fasta, input_file = input_bam, repeat_file = pbtrgt_repeat_file, output_prefix = output_prefix)
 		
 		subprocess.run(trgt_cmd, shell=True, check=True)
 		
@@ -355,8 +408,10 @@ class Samples:
 		output_blocks_file = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
 		output_stats_file = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".phased.stats.txt")
 
+		# Log HiPhase in own output file so it doesn't clog up STDOUT
 		hiphase_cmd = "hiphase --threads {threads} --ignore-read-groups --reference {reference_genome} --bam {in_bam} --output-bam {out_bam} --vcf {in_vcf} --output-vcf {out_vcf} --stats-file {stats_file} --blocks-file {blocks_file} --summary-file {summary_file}".format(threads = max_threads, reference_genome = reference_fasta, in_bam = input_bam, out_bam = output_bam, in_vcf = input_vcf, out_vcf = output_vcf, stats_file = output_stats_file, blocks_file = output_blocks_file, summary_file = output_summary_file)
 		
+		# 
 		hiphase_log = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".hiphase.log")
 
 		with open(hiphase_log, "w") as log_file:
@@ -373,20 +428,20 @@ def main():
 	# Check that all required tools are installed
 	check_required_commands()
 
-	sample_ID = "HG002"
-	sample = Samples(sample_ID, sample_dict[sample_ID][0], sample_dict[sample_ID][1])
-	sample.convert_bam_to_fastq()
-	sample.mark_duplicates()
-	sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-	sample.trim_adapters()
-	sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-	sample.align_to_reference()
-	sample.filter_reads()
-	sample.call_variants()
-	sample.call_structural_variants()
-	sample.genotype_tandem_repeats()
-	sample.merge_vcfs()
-	sample.phase_genotypes()
+	for sample_ID, sample_read_group_string in sample_dict.items():
+		sample = Samples(sample_ID, sample_read_group_string)
+		sample.convert_bam_to_fastq()
+		sample.mark_duplicates()
+		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
+		sample.trim_adapters()
+		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
+		sample.align_to_reference()
+		sample.filter_reads()
+		sample.call_variants()
+		sample.call_structural_variants()
+		sample.genotype_tandem_repeats()
+		sample.merge_vcfs()
+		sample.phase_genotypes()
 
 if __name__ == "__main__":
 	main()
