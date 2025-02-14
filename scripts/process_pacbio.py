@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 
 """
 Work Flow
@@ -99,6 +100,11 @@ sample_dict = {
 # Max threads available for parallelization
 max_threads = 6
 
+# Minimum reads per sample
+# DeepVariant is stalling and not exiting for samples with very few BAM records (e.g., HG01891: 35 mapped reads to chr6)
+# Set mapped chr6 reads threshold at which variant calling should not proceed
+min_reads_sample = 100000
+
 # Transposase mosaic end binding sequence
 # The TE sequence (and its reverse complement) introduced during tagmentation still needs to be removed
 # Adapters and barcodes were removed by PacBio with lima
@@ -123,7 +129,8 @@ def check_required_commands():
 		"samtools",
 		"singularity",
 		"tabix",
-		"trgt"
+		"trgt",
+		"whatshap"
 	]
 
 	missing_commands = []
@@ -146,14 +153,15 @@ class Samples:
 	pbsv_dir = os.path.join(output_dir, "pbsv_vcf")
 	pbtrgt_dir = os.path.join(output_dir, "pbtrgt_vcf")
 	merged_vcf_dir = os.path.join(output_dir, "merged_vcf")
-	phased_vcf_dir = os.path.join(output_dir, "phased_vcf")
+	hiphase_phased_vcf_dir = os.path.join(output_dir, "phased_vcf_hiphase")
+	whatshap_phased_vcf_dir = os.path.join(output_dir, "phased_vcf_whatshap")
 
 	def __init__(self, sample_ID, read_group_string):
 		self.sample_ID = sample_ID
 		self.unmapped_bam = os.path.join(input_dir, "raw_hifi_reads", self.sample_ID + ".hifi_reads.bam")
 		self.read_group_string = read_group_string
 
-		for directory in [Samples.fastq_raw_dir, Samples.fastq_rmdup_dir, Samples.fastq_rmdup_cutadapt_dir, Samples.mapped_bam_dir, Samples.deepvariant_dir, Samples.pbsv_dir, Samples.pbtrgt_dir, Samples.merged_vcf_dir, Samples.phased_vcf_dir]:
+		for directory in [Samples.fastq_raw_dir, Samples.fastq_rmdup_dir, Samples.fastq_rmdup_cutadapt_dir, Samples.mapped_bam_dir, Samples.deepvariant_dir, Samples.pbsv_dir, Samples.pbtrgt_dir, Samples.merged_vcf_dir, Samples.hiphase_phased_vcf_dir, Samples.whatshap_phased_vcf_dir]:
 			os.makedirs(directory, exist_ok=True)
 		
 		print(f"Processing Sample {sample_ID}!")
@@ -257,9 +265,15 @@ class Samples:
 		index_cmd = "samtools index {input_file}".format(input_file = output_bam)
 
 		subprocess.run(index_cmd, shell=True, check=True)
+
+		count_reads_cmd = "samtools view -c {input_file}".format(input_file = output_bam)
+
+		read_count = int(subprocess.check_output(count_reads_cmd, shell=True).strip())
 		
 		print("Filtered BAM records written to: {}".format(output_bam))
 		print("\n\n")
+
+		return read_count
 
 	# Call SNV with DeepVariant
 	def call_variants(self):
@@ -393,7 +407,7 @@ class Samples:
 		print("\n\n")
 
 	# Phase genotypes with HiPhase
-	def phase_genotypes(self):
+	def phase_genotypes_hiphase(self):
 		print("Phasing Genotypes with HiPhase!")
 
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
@@ -403,25 +417,62 @@ class Samples:
 		print("Input VCF: {}".format(input_vcf))
 		
 		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.haplotag.bam")
-		output_vcf = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
-		output_summary_file = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".phased.summary.txt")
-		output_blocks_file = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
-		output_stats_file = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".phased.stats.txt")
+		output_vcf = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
+		output_summary_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.summary.txt")
+		output_blocks_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
+		output_stats_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.stats.txt")
 
-		# Log HiPhase in own output file so it doesn't clog up STDOUT
 		hiphase_cmd = "hiphase --threads {threads} --ignore-read-groups --reference {reference_genome} --bam {in_bam} --output-bam {out_bam} --vcf {in_vcf} --output-vcf {out_vcf} --stats-file {stats_file} --blocks-file {blocks_file} --summary-file {summary_file}".format(threads = max_threads, reference_genome = reference_fasta, in_bam = input_bam, out_bam = output_bam, in_vcf = input_vcf, out_vcf = output_vcf, stats_file = output_stats_file, blocks_file = output_blocks_file, summary_file = output_summary_file)
 		
-		# 
-		hiphase_log = os.path.join(Samples.phased_vcf_dir, self.sample_ID + ".hiphase.log")
+		# Log HiPhase in own output file so it doesn't clog up STDOUT
+		hiphase_log = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".hiphase.log")
 
 		with open(hiphase_log, "w") as log_file:
 			subprocess.run(hiphase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
-		print("Phased VCF written to: {}".format(output_vcf))
-		print("Haplotagged BAM written to: {}".format(output_bam))
-		print("Phasing summary written to: {}".format(output_summary_file))
-		print("Phasing stats written to: {}".format(output_stats_file))
-		print("Phase blocks written to: {}".format(output_blocks_file))
+		print("HiPhase phased VCF written to: {}".format(output_vcf))
+		print("HiPhase haplotagged BAM written to: {}".format(output_bam))
+		print("HiPhase phasing summary written to: {}".format(output_summary_file))
+		print("HiPhase phasing stats written to: {}".format(output_stats_file))
+		print("HiPhase phase blocks written to: {}".format(output_blocks_file))
+		print("\n\n")
+
+	# Phase genotypes with WhatsHap
+	def phase_genotypes_whatshap(self):
+		print("Phasing Genotypes with WhatsHap!")
+
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+		input_vcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.vcf.gz")
+
+		print("Input BAM: {}".format(input_bam))
+		print("Input VCF: {}".format(input_vcf))
+
+		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.haplotag.bam")
+		phased_vcf = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
+		output_blocks_file = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
+		output_gtf_file = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
+
+		whatshap_phase_cmd = "whatshap phase --ignore-read-groups --output {output_file} --reference {reference_genome} {input_vcf} {input_bam}".format(output_file = phased_vcf, reference_genome = reference_fasta, input_vcf = input_vcf, input_bam = input_bam)
+
+		whatshap_haplotag_cmd = "whatshap haplotag --ignore-read-groups --output {output_file} --reference {reference_genome} {input_vcf} {input_bam}".format(output_file = haplotagged_bam, reference_genome = reference_fasta, input_vcf = phased_vcf, input_bam = input_bam)
+
+		whatshap_stats_cmd = "whatshap stats --block-list={block_list_file} --gtf={gtf_file} {input_vcf}".format(block_list_file = output_blocks_file, gtf_file = output_gtf_file, input_vcf = phased_vcf)
+
+		# Log WhatsHap in own output file so it doesn't clog up STDOUT
+		whatshap_log = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".whatshap.log")
+
+		with open(whatshap_log, "w") as log_file:
+			log_file.write("\n==== Running WhatsHap Phase ====\n")
+			subprocess.run(whatshap_phase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			log_file.write("\n==== Running WhatsHap Haplotag ====\n")
+			subprocess.run(whatshap_haplotag_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			log_file.write("\n==== Running WhatsHap Stats ====\n")
+			subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+		print("WhatsHap phased VCF written to: {}".format(output_vcf))
+		print("WhatsHap haplotagged BAM written to: {}".format(output_bam))
+		print("WhatsHap phase block gtf written to: {}".format(output_gtf_file))
+		print("WhatsHap phase blocks written to: {}".format(output_blocks_file))
 		print("\n\n")
 
 def main():
@@ -429,6 +480,7 @@ def main():
 	check_required_commands()
 
 	for sample_ID, sample_read_group_string in sample_dict.items():
+		start_time = time.time()
 		sample = Samples(sample_ID, sample_read_group_string)
 		sample.convert_bam_to_fastq()
 		sample.mark_duplicates()
@@ -436,12 +488,24 @@ def main():
 		sample.trim_adapters()
 		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
 		sample.align_to_reference()
-		sample.filter_reads()
-		sample.call_variants()
-		sample.call_structural_variants()
-		sample.genotype_tandem_repeats()
-		sample.merge_vcfs()
-		sample.phase_genotypes()
+		
+		chr6_reads = sample.filter_reads()
+
+		if chr6_reads > min_reads_sample:
+			sample.call_variants()
+			sample.call_structural_variants()
+			sample.genotype_tandem_repeats()
+			sample.merge_vcfs()
+			sample.phase_genotypes_hiphase()
+			sample.phase_genotypes_whatshap()
+			end_time = time.time()
+			elapsed_time = end_time - start_time
+			minutes, seconds = divmod(elapsed_time,60)
+			print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+		
+		else:
+			print("Insufficient reads for variant calling")
+			print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
 
 if __name__ == "__main__":
 	main()
