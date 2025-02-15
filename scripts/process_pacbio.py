@@ -103,7 +103,7 @@ max_threads = 6
 # Minimum reads per sample
 # DeepVariant is stalling and not exiting for samples with very few BAM records (e.g., HG01891: 35 mapped reads to chr6)
 # Set mapped chr6 reads threshold at which variant calling should not proceed
-min_reads_sample = 100000
+min_reads_sample = 100
 
 # Transposase mosaic end binding sequence
 # The TE sequence (and its reverse complement) introduced during tagmentation still needs to be removed

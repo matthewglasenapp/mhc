@@ -4,7 +4,7 @@
 #SBATCH --mail-user=mglasena@ucsc.edu
 #SBATCH --output=dorado_%j.out
 #SBATCH --error=dorado_%j.err
-#SBATCH --mem=40G
+#SBATCH --mem=20G
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --time=1-0
@@ -23,5 +23,4 @@ dorado demux -o $outdir \
     --barcode-sequences /hb/scratch/mglasena/test_ont/sample_barcodes.fa \
     --kit-name MY_CUSTOM_KIT \
     --threads 16 \
-    --barcode-both-ends \
     $basecalled_reads
