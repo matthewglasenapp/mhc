@@ -63,38 +63,38 @@ pbtrgt_repeat_file = os.path.join(input_dir, "repeats_bed/polymorphic_repeats.hg
 # Sample ID: Read Group String
 sample_dict = {
 	"HG002" : "@RG\tID:m84039_240622_113450_s1\tSM:HG002",
-	# "HG003" : "@RG\tID:m84039_240622_113450_s1\tSM:HG003",
-	# "HG004" : "@RG\tID:m84039_240622_113450_s1\tSM:HG004",
-	# "HG005" : "@RG\tID:m84039_240622_113450_s1\tSM:HG005",
-	# "HG01106" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01106",
-	# "HG01258" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01258",
-	# "HG01891" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01891",
-	# "HG01928" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01928",
-	# "HG02055" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02055",
-	# "HG02630" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02630",
-	# "HG03492" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03492",
-	# "HG03579" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03579",
-	# "IHW09021" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09021",
-	# "IHW09049" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09049",
-	# "IHW09071" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09071",
-	# "IHW09117" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09117",
-	# "IHW09118" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09118",
-	# "IHW09122" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09122",
-	# "IHW09125" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09125",
-	# "IHW09175" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09175",
-	# "IHW09198" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09198",
-	# "IHW09200" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09200",
-	# "IHW09224" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09224",
-	# "IHW09245" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09245",
-	# "IHW09251" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09251",
-	# "IHW09359" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09359",
-	# "IHW09364" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09364",
-	# "IHW09409" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09409",
-	# "NA19240" : "@RG\tID:m84039_240622_113450_s1\tSM:NA19240",
-	# "NA20129" : "@RG\tID:m84039_240622_113450_s1\tSM:NA20129",
-	# "NA21309" : "@RG\tID:m84039_240622_113450_s1\tSM:NA21309",
-	# "NA24694" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24694",
-	# "NA24695" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24695"
+	"HG003" : "@RG\tID:m84039_240622_113450_s1\tSM:HG003",
+	"HG004" : "@RG\tID:m84039_240622_113450_s1\tSM:HG004",
+	"HG005" : "@RG\tID:m84039_240622_113450_s1\tSM:HG005",
+	"HG01106" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01106",
+	"HG01258" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01258",
+	"HG01891" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01891",
+	"HG01928" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01928",
+	"HG02055" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02055",
+	"HG02630" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02630",
+	"HG03492" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03492",
+	"HG03579" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03579",
+	"IHW09021" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09021",
+	"IHW09049" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09049",
+	"IHW09071" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09071",
+	"IHW09117" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09117",
+	"IHW09118" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09118",
+	"IHW09122" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09122",
+	"IHW09125" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09125",
+	"IHW09175" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09175",
+	"IHW09198" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09198",
+	"IHW09200" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09200",
+	"IHW09224" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09224",
+	"IHW09245" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09245",
+	"IHW09251" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09251",
+	"IHW09359" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09359",
+	"IHW09364" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09364",
+	"IHW09409" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09409",
+	"NA19240" : "@RG\tID:m84039_240622_113450_s1\tSM:NA19240",
+	"NA20129" : "@RG\tID:m84039_240622_113450_s1\tSM:NA20129",
+	"NA21309" : "@RG\tID:m84039_240622_113450_s1\tSM:NA21309",
+	"NA24694" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24694",
+	"NA24695" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24695"
 }
 
 # Max threads available for parallelization
@@ -475,7 +475,7 @@ class Samples:
 			subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
 		print("WhatsHap phased VCF written to: {}".format(phased_vcf))
-		print("WhatsHap haplotagged BAM written to: {}".format(output_bam))
+		print("WhatsHap haplotagged BAM written to: {}".format(haplotagged_bam))
 		print("WhatsHap phase block gtf written to: {}".format(output_gtf_file))
 		print("WhatsHap phase blocks written to: {}".format(output_blocks_file))
 		print("\n\n")
@@ -487,21 +487,21 @@ def main():
 	for sample_ID, sample_read_group_string in sample_dict.items():
 		start_time = time.time()
 		sample = Samples(sample_ID, sample_read_group_string)
-		# sample.convert_bam_to_fastq()
-		# sample.mark_duplicates()
-		# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-		# sample.trim_adapters()
-		# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-		# sample.align_to_reference()
+		sample.convert_bam_to_fastq()
+		sample.mark_duplicates()
+		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
+		sample.trim_adapters()
+		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
+		sample.align_to_reference()
 		
 		chr6_reads = sample.filter_reads()
 
 		if chr6_reads > min_reads_sample:
-			# sample.call_variants()
-			# sample.call_structural_variants()
-			# sample.genotype_tandem_repeats()
-			# sample.merge_vcfs()
-			# sample.phase_genotypes_hiphase()
+			sample.call_variants()
+			sample.call_structural_variants()
+			sample.genotype_tandem_repeats()
+			sample.merge_vcfs()
+			sample.phase_genotypes_hiphase()
 			sample.phase_genotypes_whatshap()
 			end_time = time.time()
 			elapsed_time = end_time - start_time
