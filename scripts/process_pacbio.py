@@ -474,7 +474,7 @@ class Samples:
 			log_file.write("\n==== Running WhatsHap Stats ====\n")
 			subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
-		print("WhatsHap phased VCF written to: {}".format(output_vcf))
+		print("WhatsHap phased VCF written to: {}".format(phased_vcf))
 		print("WhatsHap haplotagged BAM written to: {}".format(output_bam))
 		print("WhatsHap phase block gtf written to: {}".format(output_gtf_file))
 		print("WhatsHap phase blocks written to: {}".format(output_blocks_file))
