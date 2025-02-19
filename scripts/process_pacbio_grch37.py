@@ -12,7 +12,7 @@ Work Flow
 4. Run fastqc on the raw deduplicated reads 
 5. Trim adapter sequences and polyA tails with cutadapt
 6. Run fastqc on the trimmed reads to verify removal of TE and polyA sequences 
-7. Map reads to GRCh38 reference genome with pbmm2
+7. Map reads to GRCh37 reference genome with pbmm2
 8. Filter for reads mapping to chr6 
 9. Call SNVs and small INDELS with DeepVariant
 10. Call structural variants with pbsv discover and pbsv call
@@ -24,13 +24,13 @@ Work Flow
 """
 Script Details:
 
-	1. The hg 38 fasta reference "GCA_000001405.15_GRCh38_no_alt_analysis_set.fa" and appropriate index file(s) are contained in /current_working_dir/reference.
+	1. The hg 37 fasta reference "Homo_sapiens.GRCh37.dna.primary_assembly.fa" and appropriate index file(s) are contained in /current_working_dir/reference/GRCh37.
 
 	2. A DeepVariant Singularity Image Format (sif) file is contained in /current_working_dir/deepvariant_sif. You must build this file on your own machine. Modify deepvariant_cmd in the call_variants() function if you are not using Singularity to run DeepVariant. 
 
 	3. The raw HiFi reads are contained in /current_working_dir/raw_hifi_reads/. The files are named <sample_ID>.hifi_reads.bam. To customize this, edit the constructor of the Samples class. 
 
-	4. The repeat bed files required for pbsv (human_GRCh38_no_alt_analysis_set.trf.bed) and pbtrgt (polymorphic_repeats.hg38.bed) are contained within /current_working_dir/repeats_bed/
+	4. The repeat bed files required for pbsv (human_hs37d5.trf.bed) and pbtrgt (polymorphic_repeats.hg38.bed) are contained within /current_working_dir/repeats_bed/
 
 	5. The default is set to use 6 threads. Change the max_threads variable to customize
 
@@ -46,14 +46,16 @@ os.makedirs(output_dir, exist_ok=True)
 # Input file paths
 
 # Use reference fasta with no alternate contigs.
-reference_fasta = os.path.join(input_dir, "reference/GRCh37/GCF_000001405.13_GRCh37_genomic.fna.gz")
+# https://ftp.ensembl.org/pub/grch37/current/fasta/homo_sapiens/dna/Homo_sapiens.GRCh37.dna.primary_assembly.fa.gz
+# Try different reference fasta: https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
+reference_fasta = os.path.join(input_dir, "reference/GRCh37/Homo_sapiens.GRCh37.dna.primary_assembly.fa")
 
 # DeepVariant sif file
 deepvariant_sif = os.path.join(input_dir, "deepvariant_sif/deepvariant.sif")
 
-# GRCh38 tandem repeat mask file for pbsv
-# Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
-tandem_repeat_bed = os.path.join(input_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
+# GRCh37 tandem repeat mask file for pbsv
+# Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_hs37d5.trf.bed
+tandem_repeat_bed = os.path.join(input_dir, "repeats_bed/human_hs37d5.trf.bed")
 
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210
@@ -231,15 +233,15 @@ class Samples:
 		print("Deduplicated trimmed reads written to: {}".format(output_file))
 		print("\n\n")
 
-	# Align to GRCh38 reference genome with pbmm2
+	# Align to GRCh37 reference genome with pbmm2
 	def align_to_reference(self):
-		print("Aligning reads to GRCh38 reference genome with pbmm2!")
+		print("Aligning reads to GRCh37 reference genome with pbmm2!")
 		
 		input_fastq = os.path.join(Samples.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
 
 		print("pbmm2 input file: {}".format(input_fastq))
 		
-		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.bam")
 
 		pbmm2_cmd = "pbmm2 align -j {threads} {reference_genome} {input_file} {output_file} --sort --log-level INFO --unmapped --bam-index BAI --rg '{rg_string}'".format(threads = max_threads, reference_genome = reference_fasta, input_file = input_fastq, output_file = output_bam, rg_string = self.read_group_string)
 
@@ -252,13 +254,13 @@ class Samples:
 	def filter_reads(self):
 		print("Excluding BAM records that don't map to chromosome 6!")
 		
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.bam")
 
 		print("Samtools input file: {}".format(input_bam))
 
-		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.bam")
 
-		samtools_cmd = "samtools view -@ {threads} -b {input_file} chr6 > '{output_file}'".format(threads = max_threads, input_file = input_bam, output_file = output_bam)
+		samtools_cmd = "samtools view -@ {threads} -b {input_file} 6 > '{output_file}'".format(threads = max_threads, input_file = input_bam, output_file = output_bam)
 		
 		subprocess.run(samtools_cmd, shell=True, check=True)
 
@@ -279,12 +281,12 @@ class Samples:
 	def call_variants(self):
 		print("Calling SNVs and small INDELS with DeepVariant!")
 
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.bam")
 
 		print("DeepVariant input file: {}".format(input_bam))
 		
-		output_vcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SNV.vcf.gz")
-		output_gvcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SNV.g.vcf.gz")
+		output_vcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.SNV.vcf.gz")
+		output_gvcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.SNV.g.vcf.gz")
 
 		bind_paths = [
 			f"{Samples.deepvariant_dir}:/data",
@@ -298,10 +300,10 @@ class Samples:
 			singularity exec {binds} {sif} /opt/deepvariant/bin/run_deepvariant \
 				--model_type=PACBIO \
 				--ref=/reference/{ref_filename} \
-				--reads=/input/{sample}.dedup.trimmed.hg38.chr6.bam \
-				--output_vcf=/data/{sample}.dedup.trimmed.hg38.chr6.SNV.vcf.gz \
-				--output_gvcf=/data/{sample}.dedup.trimmed.hg38.chr6.SNV.g.vcf.gz \
-				--regions chr6 \
+				--reads=/input/{sample}.dedup.trimmed.hg37.chr6.bam \
+				--output_vcf=/data/{sample}.dedup.trimmed.hg37.chr6.SNV.vcf.gz \
+				--output_gvcf=/data/{sample}.dedup.trimmed.hg37.chr6.SNV.g.vcf.gz \
+				--regions 6 \
 				--num_shards=8
 			""".format(
 				binds=bind_flags,
@@ -324,14 +326,14 @@ class Samples:
 	def call_structural_variants(self):
 		print("Calling structural variants with pbsv!")
 
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.bam")
 
 		print("pbsv input file: {}".format(input_bam))
 		
-		output_svsig = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.svsig.gz")
-		output_vcf = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf")
+		output_svsig = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.svsig.gz")
+		output_vcf = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.SV.vcf")
 
-		pbsv_discover_cmd = "pbsv discover --region chr6 --tandem-repeats {tandem_repeat_file} {input_file} {output_file}".format(tandem_repeat_file = tandem_repeat_bed, input_file = input_bam, output_file = output_svsig)
+		pbsv_discover_cmd = "pbsv discover --region 6 --tandem-repeats {tandem_repeat_file} {input_file} {output_file}".format(tandem_repeat_file = tandem_repeat_bed, input_file = input_bam, output_file = output_svsig)
 		
 		subprocess.run(pbsv_discover_cmd, shell=True, check=True)
 
@@ -339,7 +341,7 @@ class Samples:
 		
 		subprocess.run(index_svsig_cmd, shell=True, check=True)
 
-		pbsv_call_cmd = "pbsv call -j {threads} --region chr6 --hifi {reference_genome} {input_file} {output_file}".format(threads = max_threads, reference_genome = reference_fasta, input_file = output_svsig, output_file = output_vcf)
+		pbsv_call_cmd = "pbsv call -j {threads} --region 6 --hifi {reference_genome} {input_file} {output_file}".format(threads = max_threads, reference_genome = reference_fasta, input_file = output_svsig, output_file = output_vcf)
 		
 		subprocess.run(pbsv_call_cmd, shell=True, check=True)
 
@@ -356,11 +358,11 @@ class Samples:
 	def genotype_tandem_repeats(self):
 		print("Genotyping tandem repeats with pbtrgt!")
 
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.bam")
 
 		print("trgt input file: {}".format(input_bam))
 		
-		output_prefix = self.sample_ID + ".dedup.trimmed.hg38.chr6.TR"
+		output_prefix = self.sample_ID + ".dedup.trimmed.hg37.chr6.TR"
 		
 		os.chdir(Samples.pbtrgt_dir)
 		
@@ -385,15 +387,15 @@ class Samples:
 	def merge_vcfs(self):
 		print("Merging DeepVariant, pbsv, and pbtrgt VCF files!")
 
-		input_snv = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SNV.vcf.gz")
-		input_SV = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf.gz")
-		input_TR = os.path.join(Samples.pbtrgt_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.TR.vcf.gz")
+		input_snv = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.SNV.vcf.gz")
+		input_SV = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.SV.vcf.gz")
+		input_TR = os.path.join(Samples.pbtrgt_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.TR.vcf.gz")
 
 		print("DeepVariant input file: {}".format(input_snv))
 		print("pbsv input file: {}".format(input_SV))
 		print("pbtrgt input file: {}".format(input_TR))
 
-		output_vcf = os.path.join(Samples.merged_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.vcf.gz")
+		output_vcf = os.path.join(Samples.merged_vcf_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.vcf.gz")
 		
 		concat_cmd = "bcftools concat --allow-overlaps {SNV_vcf} {SV_vcf} {TR_vcf} | grep -v 'chrX|chrY' | grep -v 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_genome} | bcftools sort | bgzip > {output_file}".format(SNV_vcf = input_snv, SV_vcf = input_SV, TR_vcf = input_TR, reference_genome = reference_fasta, output_file = output_vcf)
 		
@@ -410,14 +412,14 @@ class Samples:
 	def phase_genotypes_hiphase(self):
 		print("Phasing Genotypes with HiPhase!")
 
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
-		input_vcf = os.path.join(Samples.merged_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.vcf.gz")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.bam")
+		input_vcf = os.path.join(Samples.merged_vcf_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.vcf.gz")
 
 		print("Input BAM: {}".format(input_bam))
 		print("Input VCF: {}".format(input_vcf))
 		
-		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.haplotag.bam")
-		output_vcf = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.haplotag.bam")
+		output_vcf = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.phased.vcf.gz")
 		output_summary_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.summary.txt")
 		output_blocks_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
 		output_stats_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.stats.txt")
@@ -441,14 +443,14 @@ class Samples:
 	def phase_genotypes_whatshap(self):
 		print("Phasing Genotypes with WhatsHap!")
 
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
-		input_vcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SNV.vcf.gz")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.bam")
+		input_vcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.SNV.vcf.gz")
 
 		print("Input BAM: {}".format(input_bam))
 		print("Input VCF: {}".format(input_vcf))
 
-		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.haplotag.bam")
-		phased_vcf = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
+		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.haplotag.bam")
+		phased_vcf = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg37.chr6.phased.vcf.gz")
 		output_blocks_file = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
 		output_gtf_file = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
 
@@ -487,22 +489,22 @@ def main():
 	for sample_ID, sample_read_group_string in sample_dict.items():
 		start_time = time.time()
 		sample = Samples(sample_ID, sample_read_group_string)
-		sample.convert_bam_to_fastq()
-		sample.mark_duplicates()
-		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-		sample.trim_adapters()
-		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-		sample.align_to_reference()
+		# sample.convert_bam_to_fastq()
+		# sample.mark_duplicates()
+		# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
+		# sample.trim_adapters()
+		# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
+		# sample.align_to_reference()
 		
 		chr6_reads = sample.filter_reads()
 
 		if chr6_reads > min_reads_sample:
-			sample.call_variants()
+			# sample.call_variants()
 			sample.call_structural_variants()
-			sample.genotype_tandem_repeats()
-			sample.merge_vcfs()
-			sample.phase_genotypes_hiphase()
-			sample.phase_genotypes_whatshap()
+			# sample.genotype_tandem_repeats()
+			# sample.merge_vcfs()
+			# sample.phase_genotypes_hiphase()
+			# sample.phase_genotypes_whatshap()
 			end_time = time.time()
 			elapsed_time = end_time - start_time
 			minutes, seconds = divmod(elapsed_time,60)
