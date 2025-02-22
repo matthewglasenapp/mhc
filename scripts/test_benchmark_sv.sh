@@ -27,9 +27,11 @@ samtools index HG002.dedup.trimmed.hg37.chr6.bam
 pbsv discover --region 6 --tandem-repeats $tandem_repeat_bed HG002.dedup.trimmed.hg37.chr6.bam HG002.dedup.trimmed.hg37.chr6.svsig.gz
 tabix -c '#' -s 3 -b 4 -e 4 HG002.dedup.trimmed.hg37.chr6.svsig.gz
 
-
 pbsv call -j 16 --region 6 --hifi $reference_fasta HG002.dedup.trimmed.hg37.chr6.svsig.gz hg2.pbsv.vcf -t INS,DEL
-bgzip tools/pbsv/hg2.pbsv.vcf
-tabix tools/pbsv/hg2.pbsv.vcf.gz
+bgzip hg2.pbsv.vcf
+tabix hg2.pbsv.vcf.gz
 
-truvari/truvari.py -f ref/human_hs37d5.fasta -b $truth_vcf --includebed $regions_file --passonly --giabreport -r 1000 -p 0.00 -c hg2.pbsv.vcf.gz
+# truvari/truvari.py -f ref/human_hs37d5.fasta -b $truth_vcf --includebed $regions_file --passonly --giabreport -r 1000 -p 0.00 -c hg2.pbsv.vcf.gz -o bench
+
+# --passonly
+truvari bench -f ref/human_hs37d5.fasta -b $truth_vcf --includebed mhc_3.bed -r 25000 --chunksize 25000 --sizemin 10 -S 10 -p 0.00 --extend 1000 -c hg2.pbsv.vcf.gz -o bench
