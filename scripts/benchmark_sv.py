@@ -1,6 +1,7 @@
 import subprocess
 import shutil
 import sys
+import os
 
 #==============================
 # Download necessary files for analysis
@@ -22,9 +23,10 @@ max_threads = 12
 reference_fasta = "ref/human_hs37d5.fasta"
 tandem_repeat_bed = "ref/human_hs37d5.trf.bed"
 truth_vcf = "/hb/scratch/mglasena/MHC/concordance/GIAB_benchmark/HG002_SV/NIST_SV_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz"
-#regions_file = "mhc_3_hg19.bed"
-regions_file = "merged_hla_hg19.bed"
-#regions_file = "test.bed"
+regions_dir = "regions/"
+#regions_file = "regions/merged_hla_hg19.bed"
+#regions_file = "regions/mhc_3_hg19.bed"
+regions_file = "regions/mhc_3_hg19_captured.bed"
 fastq_file = "/hb/scratch/mglasena/test_pacbio/processed_data/fastq_rmdup_cutadapt/HG002.dedup.trimmed.fastq.gz"
 HG002_RG_string = r'"@RG\tID:m84039_240622_113450_s1\tSM:HG002"'
 
@@ -49,6 +51,7 @@ def check_required_commands():
 		"pbmm2",
 		"pbsv",
 		"samtools",
+		"svanalyzer",
 		"tabix",
 		"truvari"
 	]
@@ -66,46 +69,36 @@ def check_required_commands():
 
 # Map fastq files to hg19 reference genome
 def align_to_reference():
-	#pbmm2 align -j 16 $reference_fasta $fastq_file HG002.dedup.trimmed.hg38.bam --sort --log-level INFO --unmapped --bam-index BAI --rg @RG\tID:m84039_240622_113450_s1\tSM:HG002 
-
-	output_bam = "HG002.dedup.trimmed.hg19.bam"
+	output_bam = "mapped_bam/HG002.dedup.trimmed.hg19.bam"
 
 	pbmm2_cmd = "pbmm2 align -j {max_threads} {reference_fasta} --sort --log-level INFO --unmapped --bam-index BAI  {input_file} {output_file} --rg {read_group_string}".format(max_threads = max_threads, reference_fasta = reference_fasta, input_file = fastq_file, output_file = output_bam, read_group_string = HG002_RG_string)
 
 	subprocess.run(pbmm2_cmd, shell=True, check=True)
 
 	# Filter reads for chromosome 6
-	#samtools view -@ 16 -b HG002.dedup.trimmed.hg38.bam 6 > HG002.dedup.trimmed.hg37.chr6.bam
-
-	samtools_cmd = "samtools view -@ {max_threads} -b {input_bam} 6 > {output_bam}".format(max_threads = max_threads, input_bam = output_bam, output_bam = "HG002.dedup.trimmed.hg19.chr6.bam")
+	filtered_bam = "mapped_bam/HG002.dedup.trimmed.hg19.chr6.bam"
+	samtools_cmd = "samtools view -@ {max_threads} -b {input_bam} 6 > {output_bam}".format(max_threads = max_threads, input_bam = output_bam, output_bam = filtered_bam)
 
 	subprocess.run(samtools_cmd, shell=True, check=True)
 
-	# samtools index HG002.dedup.trimmed.hg37.chr6.bam
-	index_cmd = "samtools index HG002.dedup.trimmed.hg19.chr6.bam"
+	index_cmd = "samtools index {input_bam}".format(input_bam = filtered_bam)
 
 	subprocess.run(index_cmd, shell=True, check=True)
 
 def run_pbsv():
-	# Run pbsv
-	# pbsv discover --region 6 --tandem-repeats $tandem_repeat_bed HG002.dedup.trimmed.hg37.chr6.bam HG002.dedup.trimmed.hg37.chr6.svsig.gz
-	
-	input_bam = "HG002.dedup.trimmed.hg19.chr6.bam"
-	output_svsig = "HG002.dedup.trimmed.hg19.chr6.svsig.gz"
-	output_vcf = "HG002.dedup.trimmed.hg19.chr6.vcf"
+	# Run pbsv	
+	input_bam = "mapped_bam/HG002.dedup.trimmed.hg19.chr6.bam"
+	output_svsig = "pbsv_vcf/HG002.dedup.trimmed.hg19.chr6.svsig.gz"
+	output_vcf = "pbsv_vcf/HG002.dedup.trimmed.hg19.chr6.vcf"
 
 	pbsv_discover_cmd = "pbsv discover --region 6 --tandem-repeats {tandem_repeat_bed} {input_bam} {output_svsig}".format(tandem_repeat_bed = tandem_repeat_bed, input_bam = input_bam, output_svsig = output_svsig)
 	
 	subprocess.run(pbsv_discover_cmd, shell=True, check=True)
 
-	# tabix -c '#' -s 3 -b 4 -e 4 HG002.dedup.trimmed.hg37.chr6.svsig.gz
 	index_cmd = "tabix -c '#' -s 3 -b 4 -e 4 {output_svsig}".format(output_svsig = output_svsig)
 
 	subprocess.run(index_cmd, shell=True, check=True)
 	
-	# pbsv call -j 16 --region 6 --hifi $reference_fasta HG002.dedup.trimmed.hg37.chr6.svsig.gz hg2.pbsv.vcf -t INS,DEL
-	# bgzip hg2.pbsv.vcf
-	# tabix hg2.pbsv.vcf.gz
 	pbsv_call_cmd = "pbsv call -j {max_threads} --region 6 --hifi {reference_fasta} {input_svsig} {output_vcf}".format(max_threads = max_threads, reference_fasta = reference_fasta, input_svsig = output_svsig, output_vcf = output_vcf)
 
 	subprocess.run(pbsv_call_cmd, shell=True, check=True)
@@ -115,31 +108,34 @@ def run_pbsv():
 	subprocess.run(bgzip_cmd, shell=True, check=True)
 	subprocess.run(tabix_cmd, shell=True, check=True)
 
-def run_truvari():
-	# --passonly
-	#truvari bench -f ref/human_hs37d5.fasta -b $truth_vcf --includebed mhc_3.bed -r 25000 --chunksize 25000 --sizemin 10 -S 10 -p 0.00 --extend 1000 -c hg2.pbsv.vcf.gz -o bench
-	
-	input_vcf = "HG002.dedup.trimmed.hg19.chr6.vcf.gz"
+def run_truvari():	
+	input_vcf = "pbsv_vcf/HG002.dedup.trimmed.hg19.chr6.vcf.gz"
 
 	# --extend 1000
-	truvari_cmd = "truvari bench -f {reference_fasta} -b {truth_vcf} --includebed {bed_file} -r 1000 -p 0 --sizemin 10 --sizefilt 10 -c {input_vcf} -o {output_dir}".format(reference_fasta = reference_fasta, truth_vcf = truth_vcf, bed_file = regions_file, input_vcf = input_vcf, output_dir = "bench_truvari")
+	truvari_cmd = "truvari bench -f {reference_fasta} -b {truth_vcf} --includebed {bed_file} -r 1000 -p 0 --sizemin 10 --sizefilt 10 -c {input_vcf} -o {output_dir}".format(reference_fasta = reference_fasta, truth_vcf = truth_vcf, bed_file = regions_file, input_vcf = input_vcf, output_dir = "truvari")
 
 	subprocess.run(truvari_cmd, shell=True, check=True)
 
 def run_svanalyzer():
-	input_vcf = "HG002.dedup.trimmed.hg19.chr6.vcf.gz"
-
-	# svanalyzer benchmark --ref $reference_fasta --test $query_vcf --truth $truth_vcf
+	input_vcf = os.path.join(os.getcwd(), "pbsv_vcf/HG002.dedup.trimmed.hg19.chr6.vcf.gz")
+	ref = os.path.abspath(reference_fasta)
+	bed = os.path.abspath(regions_file)
+	os.chdir("svanalyzer/")
 	
-	#svanalyzer_cmd = "svanalyzer benchmark --ref {reference_fasta} --test {input_vcf} --truth {truth_vcf}".format(reference_fasta = reference_fasta, input_vcf = input_vcf, truth_vcf = truth_vcf)
-	#subprocess.run(svanalyzer_cmd, shell=True, check=True)
+	svanalyzer_cmd = "svanalyzer benchmark --ref {reference_fasta} --test {input_vcf} --truth {truth_vcf} -minsize 10 --includebed {bed_file} -prefix svanalyzer".format(reference_fasta = ref, input_vcf = input_vcf, truth_vcf = truth_vcf, bed_file = bed)
+	subprocess.run(svanalyzer_cmd, shell=True, check=True)
 
 def main():
-	#check_required_commands()
-	#align_to_reference()
-	#run_pbsv()
+	check_required_commands()
+	
+	output_dirs = ["mapped_bam/", "pbsv_vcf/", "svanalyzer/"]
+	for dir in output_dirs:
+		os.makedirs(dir, exist_ok=True)
+
+	align_to_reference()
+	run_pbsv()
 	run_truvari()
-	#run_svanalyzer()
+	run_svanalyzer()
 
 if __name__ == "__main__":
 	main()
