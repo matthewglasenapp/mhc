@@ -26,7 +26,8 @@ truth_vcf = "/hb/scratch/mglasena/MHC/concordance/GIAB_benchmark/HG002_SV/NIST_S
 regions_dir = "regions/"
 #regions_file = "regions/merged_hla_hg19.bed"
 #regions_file = "regions/mhc_3_hg19.bed"
-regions_file = "regions/mhc_3_hg19_captured.bed"
+#regions_file = "regions/mhc_3_hg19_captured.bed"
+regions_file = "regions/50X_hs37d5.bed"
 fastq_file = "/hb/scratch/mglasena/test_pacbio/processed_data/fastq_rmdup_cutadapt/HG002.dedup.trimmed.fastq.gz"
 HG002_RG_string = r'"@RG\tID:m84039_240622_113450_s1\tSM:HG002"'
 
@@ -37,6 +38,7 @@ HG002_RG_string = r'"@RG\tID:m84039_240622_113450_s1\tSM:HG002"'
 
 # Lift over hg 19 coordinates from hg38 using CrossMap 
 # CrossMap bed hg38ToHg19.over.chain.gz mhc_3_hg38.bed mhc_3_hs37d5.bed
+# awk '{ $1="6"; print }' OFS="\t" input.bed > output.bed
 # 6	31496738	32374958
 
 # Or take hg19 coordinates for MCCD1 - BTNL2 directly from ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_19/gencode.v19.annotation.gff3.gz
@@ -111,8 +113,7 @@ def run_pbsv():
 def run_truvari():	
 	input_vcf = "pbsv_vcf/HG002.dedup.trimmed.hg19.chr6.vcf.gz"
 
-	# --extend 1000
-	truvari_cmd = "truvari bench -f {reference_fasta} -b {truth_vcf} --includebed {bed_file} -r 1000 -p 0 --sizemin 10 --sizefilt 10 -c {input_vcf} -o {output_dir}".format(reference_fasta = reference_fasta, truth_vcf = truth_vcf, bed_file = regions_file, input_vcf = input_vcf, output_dir = "truvari")
+	truvari_cmd = "truvari bench -f {reference_fasta} -b {truth_vcf} --includebed {bed_file} --extend 1000 -r 1000 -p 0 --sizemin 10 --sizefilt 10 -c {input_vcf} -o {output_dir}".format(reference_fasta = reference_fasta, truth_vcf = truth_vcf, bed_file = regions_file, input_vcf = input_vcf, output_dir = "truvari")
 
 	subprocess.run(truvari_cmd, shell=True, check=True)
 
@@ -129,11 +130,11 @@ def main():
 	check_required_commands()
 	
 	output_dirs = ["mapped_bam/", "pbsv_vcf/", "svanalyzer/"]
-	for dir in output_dirs:
-		os.makedirs(dir, exist_ok=True)
+	#for dir in output_dirs:
+		#os.makedirs(dir, exist_ok=True)
 
-	align_to_reference()
-	run_pbsv()
+	#align_to_reference()
+	#run_pbsv()
 	run_truvari()
 	run_svanalyzer()
 
