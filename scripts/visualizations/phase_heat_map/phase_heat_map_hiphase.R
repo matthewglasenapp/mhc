@@ -41,8 +41,8 @@ figure <- ggplot(df_long, aes(x = Gene, y = sample, fill = Value)) +
 print(figure)
 
 # Save the figure
-ggsave(filename = "promethion_phase_heat_map.pdf", plot = figure)
-ggsave(filename = "promethion_phase_heat_map.png", plot = figure)
+ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
+ggsave(filename = "hiphase_heat_map.png", plot = figure)
 
 
 
