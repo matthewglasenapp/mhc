@@ -10,7 +10,8 @@ genes_bed = "test.bed"
 vcf_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
 
 # "HG01891"
-samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
+#samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
+samples = ["HG002"]
 genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DRB5", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
 
 # {"gene_name": [start, stop]}
@@ -70,6 +71,7 @@ def load_heterozygous_variants():
 	return heterozygous_sites
 
 # Get list of HiPhase haploblock intervals for chromosome 6
+# An alternative approach (from HiPhase): bedtools intersect -a genes_of_interest.bed -b sample.hiphase.haploblocks.bed -f 1.0 -wa 
 def parse_haploblocks(sample, het_sites):
 	print(f"Processing {sample}: Received {len(het_sites)} heterozygous sites")
 	haploblock_list = []
@@ -99,6 +101,12 @@ def parse_haploblocks(sample, het_sites):
 			next_het = min([h for h in het_sites if h > stop], default=stop)
 			haploblock_list.append([prev_het - 1, next_het])
 
+	output_bed = sample + ".haploblocks.bed"
+	with open(output_bed, "w") as f:
+		for haploblock in haploblock_list:
+			start = haploblock[0]
+			stop = haploblock[1]
+			f.write(f"chr6\t{start}\t{stop}\n")
 	return sample, haploblock_list
 
 
