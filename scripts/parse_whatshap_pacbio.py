@@ -4,10 +4,10 @@ import json
 import pysam
 from joblib import Parallel, delayed
 
-haploblock_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
+haploblock_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_whatshap/"
 #genes_bed = "hla_captured_genes.bed"
 genes_bed = "test.bed"
-vcf_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
+vcf_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_whatshap/"
 
 # "HG01891"
 samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
@@ -75,7 +75,7 @@ def parse_haploblocks(sample, het_sites):
 	print(f"Processing {sample}: Received {len(het_sites)} heterozygous sites")
 	haploblock_list = []
 	
-	haploblock_file = os.path.join(haploblock_dir, f"{sample}.phased.blocks.txt")
+	haploblock_file = os.path.join(haploblock_dir, f"{sample}.phased.haploblocks.txt")
 
 	if not os.path.exists(haploblock_file):
 		print(f"❌ Missing haploblock file for {sample}")
@@ -91,9 +91,9 @@ def parse_haploblocks(sample, het_sites):
 
 	for line in haploblocks[1:]:
 		fields = line.split("\t")
-		chromosome = fields[3]
-		start = int(fields[4]) - 1
-		stop = int(fields[5])
+		chromosome = fields[1]
+		start = int(fields[3]) - 1
+		stop = int(fields[4])
 
 		if chromosome == "chr6" and stop > hla_start:
 			prev_het = max([h for h in het_sites if h < start], default=start)

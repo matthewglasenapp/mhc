@@ -492,12 +492,12 @@ def main():
 	for sample_ID, sample_read_group_string in sample_dict.items():
 		start_time = time.time()
 		sample = Samples(sample_ID, sample_read_group_string)
-		# sample.convert_bam_to_fastq()
-		# sample.mark_duplicates()
-		# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-		# sample.trim_adapters()
-		# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-		# sample.align_to_reference()
+		sample.convert_bam_to_fastq()
+		sample.mark_duplicates()
+		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
+		sample.trim_adapters()
+		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
+		sample.align_to_reference()
 		
 		chr6_reads = sample.filter_reads()
 

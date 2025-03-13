@@ -4,7 +4,8 @@ library(ggplot2)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/phase_heat_map/")
 
 # Load the data
-data <- read.csv("phase_map_hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
+#data <- read.csv("phase_map_hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
+data <- read.csv("whatshap_phase_map.csv", header = TRUE, stringsAsFactors = FALSE)
 
 # Replace dots with dashes in column names
 colnames(data) <- gsub("\\.", "-", colnames(data))
@@ -41,8 +42,30 @@ figure <- ggplot(df_long, aes(x = Gene, y = sample, fill = Value)) +
 print(figure)
 
 # Save the figure
-ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
-ggsave(filename = "hiphase_heat_map.png", plot = figure)
+#ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
+#ggsave(filename = "hiphase_heat_map.png", plot = figure)
+ggsave(filename = "whatshap_heat_map.pdf", plot = figure)
+ggsave(filename = "whatshap_heat_map.png", plot = figure)
+
+# Load necessary library
+library(dplyr)
+
+# Example data (assuming 'data' is already loaded)
+# Convert all non-sample columns to numeric if needed
+data_numeric <- data %>% select(-sample)
+
+# Count zeros per row
+zero_counts <- rowSums(data_numeric == 0)
+
+# Count occurrences
+all_ones <- sum(zero_counts == 0)  # Samples with all 1s
+one_zero <- sum(zero_counts == 1)  # Samples with exactly one zero
+two_zeros <- sum(zero_counts == 2)  # Samples with exactly two zeros
+
+# Print results
+cat("Samples with all 1s:", all_ones, "\n")
+cat("Samples with exactly one 0:", one_zero, "\n")
+cat("Samples with exactly two 0s:", two_zeros, "\n")
 
 
 
