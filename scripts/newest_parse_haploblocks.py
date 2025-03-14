@@ -22,6 +22,8 @@ haploblock_dict = {sample: [] for sample in samples}
 # {"sample_id": [phased_genes]}
 gene_haploblock_dict = {sample: [] for sample in samples}
 
+incomplete_data = []
+
 hla_start = 29722774
 hla_stop = 33129084
 
@@ -29,6 +31,7 @@ hla_stop = 33129084
 phased_genes_by_sample_csv = "phased_genes.tsv"
 phased_genes_by_sample_json = "phased_genes.json"
 phase_map_csv = "phase_map.csv"
+incomplete_file = "incomplete.csv"
 
 # Populate dictionary of captured genes with gene name and start and stop coordinates
 def create_genes_dict():
@@ -48,10 +51,10 @@ def load_heterozygous_variants():
 		vcf_file = os.path.join(vcf_dir, f"{sample}.dedup.trimmed.hg38.chr6.phased.vcf.gz")
 
 		if not os.path.exists(vcf_file):
-			print(f"❌ Warning: VCF file missing for {sample}")
+			#print(f"❌ Warning: VCF file missing for {sample}")
 			continue  # Skip missing files
 
-		print(f"✅ Found VCF file for {sample}")
+		#print(f"✅ Found VCF file for {sample}")
 
 		vcf = pysam.VariantFile(vcf_file)
 
@@ -64,30 +67,30 @@ def load_heterozygous_variants():
 			if genotype in [(0, 1), (1, 0)]:
 				heterozygous_sites[sample]["chr6"].append(record.pos)
 
-		print(f"➡ Loaded {len(heterozygous_sites[sample]['chr6'])} heterozygous sites for {sample}")
+		#print(f"➡ Loaded {len(heterozygous_sites[sample]['chr6'])} heterozygous sites for {sample}")
 
-	print("Final heterozygous_sites dictionary keys:", heterozygous_sites.keys())  # Check which samples were added
+	#print("Final heterozygous_sites dictionary keys:", heterozygous_sites.keys())  # Check which samples were added
 	return heterozygous_sites
 
 # Get list of HiPhase haploblock intervals for chromosome 6
 # An alternative approach (from HiPhase): bedtools intersect -a genes_of_interest.bed -b sample.hiphase.haploblocks.bed -f 1.0 -wa 
 def parse_haploblocks(sample, het_sites):
-	print(f"Processing {sample}: Received {len(het_sites)} heterozygous sites")
+	#print(f"Processing {sample}: Received {len(het_sites)} heterozygous sites")
 	haploblock_list = []
 	
 	haploblock_file = os.path.join(haploblock_dir, f"{sample}.phased.blocks.txt")
 
 	if not os.path.exists(haploblock_file):
-		print(f"❌ Missing haploblock file for {sample}")
+		#print(f"❌ Missing haploblock file for {sample}")
 		return sample, []
 
-	print(f"✅ Processing haploblock file for {sample}")
+	#print(f"✅ Processing haploblock file for {sample}")
 
 	with open(haploblock_file, "r") as f:
 		haploblocks = f.read().splitlines()
 
-	if not het_sites:
-		print(f"⚠ Warning: No heterozygous sites found for {sample}, skipping haploblock extension.")
+	#if not het_sites:
+		#print(f"⚠ Warning: No heterozygous sites found for {sample}, skipping haploblock extension.")
 
 	for line in haploblocks[1:]:
 		fields = line.split("\t")
@@ -96,47 +99,98 @@ def parse_haploblocks(sample, het_sites):
 		stop = int(fields[5])
 
 		if chromosome == "chr6" and stop > hla_start:
-			prev_het = max([h for h in het_sites if h < start], default=start)
-			next_het = min([h for h in het_sites if h > stop], default=stop)
-			haploblock_list.append([prev_het - 1, next_het])
+			haploblock_list.append([start,stop])
 
-	output_bed = sample + ".haploblocks.bed"
-	with open(output_bed, "w") as f:
-		for haploblock in haploblock_list:
-			start = haploblock[0]
-			stop = haploblock[1]
-			f.write(f"chr6\t{start}\t{stop}\n")
 	return sample, haploblock_list
-
 
 # Check whether each captured MHC gene is completely spanned by a haploblock
 def evaluate_gene_haploblocks(sample, het_sites):
 	gene_list = []
+	sample_incomplete_data = []
 	haploblocks = haploblock_dict[sample]
 
 	for gene in genes_dict:
 		gene_start = genes_dict[gene][0]
 		gene_stop = genes_dict[gene][1]
+		gene_length = gene_stop - gene_start
 
 		gene_het_sites = [site for site in het_sites if gene_start <= site <= gene_stop]
-
-		if not gene_het_sites:
+		if len(gene_het_sites) <= 1:
 			gene_list.append(gene)
-			
-			if gene in genes_of_interest:
-				print(f"{gene} has no heterozygous sites in sample {sample}")
-				print(f"Counting {sample} {gene} as fully phased")
-			
 			continue
+
+		fully_phased = False
 
 		for block_start, block_stop in haploblocks:
 			if block_start <= gene_start and block_stop >= gene_stop:
 				gene_list.append(gene)
+				fully_phased = True
 				break
 
-	return sample, gene_list
+			extended_start = max([h for h in het_sites if h < block_start], default=gene_start)
+			extended_start = max(extended_start, gene_start)
+
+			extended_stop = min([h for h in het_sites if h > block_stop], default=gene_stop)
+			extended_stop = min(extended_stop, gene_stop)
+
+			if extended_start <= gene_start and extended_stop >= gene_stop:
+				gene_list.append(gene)
+				fully_phased = True
+				break
+
+		if not fully_phased and gene in genes_of_interest:
+			overlapping_haploblocks = [
+				(b[0], b[1]) for b in haploblocks if not (b[1] < gene_start or b[0] > gene_stop)
+			]
+			num_pre_merge_haploblocks = len(overlapping_haploblocks)  # Track count before extension & merging
+
+			print(f"\n🔎 DEBUG - {sample}, {gene}: Processing gene at {gene_start}-{gene_stop}")
+			print(f"  ➡️ Overlapping unextended haploblocks: {overlapping_haploblocks} (Count: {num_pre_merge_haploblocks})")
+
+			# Step 1: Extend each haploblock independently
+			extended_haploblocks = []
+			for block_start, block_stop in overlapping_haploblocks:
+				extended_start = max([h for h in het_sites if h < block_start], default=gene_start)
+				extended_start = max(extended_start, gene_start)
+
+				extended_stop = min([h for h in het_sites if h > block_stop], default=gene_stop)
+				extended_stop = min(extended_stop, gene_stop)
+
+				extended_haploblocks.append((extended_start, extended_stop))
+
+			print(f"  🔄 Extended haploblocks: {extended_haploblocks} (Pre-Merge Count: {len(extended_haploblocks)})")
+
+			# Step 2: Merge overlapping extended haploblocks
+			merged_intervals = []
+			extended_haploblocks.sort()
+
+			for start, stop in extended_haploblocks:
+				if not merged_intervals or start > merged_intervals[-1][1]:
+					merged_intervals.append((start, stop))
+				else:
+					merged_intervals[-1] = (merged_intervals[-1][0], max(merged_intervals[-1][1], stop))
+
+			print(f"  🔀 Merged haploblocks: {merged_intervals} (Final Count: {len(merged_intervals)})")
+
+			# Step 3: Compute overlap & percentage
+			total_overlap = sum(max(0, min(stop, gene_stop) - max(start, gene_start)) for start, stop in merged_intervals)
+			prop_overlap = min(total_overlap / gene_length, 1.0)
+			prop_phased_str = f"{prop_overlap * 100:.2f}%"
+
+			# ✅ Use the **PRE-MERGE** haploblock count, not merged count!
+			sample_incomplete_data.append([sample, gene, num_pre_merge_haploblocks, prop_phased_str])
+			print(f"✅ FINAL DEBUG: {sample}, {gene}, Pre-Merge Haploblocks: {num_pre_merge_haploblocks}, Prop Phased: {prop_phased_str}")
+
+
+	return sample, gene_list, sample_incomplete_data
 
 def write_results():
+	# Debug: Check if any data was collected
+	print(f"🔍 DEBUG: Number of incomplete entries: {len(incomplete_data)}")
+	for entry in incomplete_data[:5]:  # Print the first 5 entries to check
+		print(entry)
+
+	# Write fully phased genes
 	with open(phased_genes_by_sample_csv, "w", newline="") as csv_file:
 		writer = csv.writer(csv_file, delimiter="\t")
 		writer.writerow(["sample", "num_genes", "genes"])
@@ -145,6 +199,16 @@ def write_results():
 
 	with open(phased_genes_by_sample_json, "w") as json_file:
 		json.dump(gene_haploblock_dict, json_file, indent=4)
+
+	# Write incomplete.csv only if there are entries
+	if incomplete_data:
+		with open(incomplete_file, "w", newline="") as csvfile:
+			csv_writer = csv.writer(csvfile)
+			csv_writer.writerow(["sample", "gene", "num_haploblocks", "prop_phased"])  # Header
+			csv_writer.writerows(incomplete_data)  # Write all collected data at once
+	else:
+		print("⚠️ WARNING: No incomplete genes found. incomplete.csv will be empty.")
+
 
 def make_heatmap_data():
 	phased_count_dict = {gene: 0 for gene in genes_of_interest}
@@ -176,18 +240,9 @@ def make_heatmap_data():
 	for gene, prop_phased in prop_phased_dict.items():
 		print(f"{gene}: {prop_phased}")
 
-
-
 def main():
 	create_genes_dict()
 	heterozygous_sites = load_heterozygous_variants()
-
-	if "HG002" not in heterozygous_sites:
-		print("❌ Error: HG002 is missing from heterozygous_sites before parallel execution!")
-		print("Existing keys:", heterozygous_sites.keys())
-		return  # Exit early
-
-	print("✅ HG002 exists in heterozygous_sites before parallel execution!")
 
 	haploblocks_by_sample = Parallel(n_jobs=10)(
 		delayed(parse_haploblocks)(sample, heterozygous_sites.get(sample, {}).get("chr6", [])) for sample in samples
@@ -196,11 +251,13 @@ def main():
 	for sample, haploblock_list in haploblocks_by_sample:
 		haploblock_dict[sample] = haploblock_list
 
+	genes_by_haploblock = Parallel(n_jobs=10)(
+		delayed(evaluate_gene_haploblocks)(sample, heterozygous_sites.get(sample, {}).get("chr6", [])) for sample in samples
+	)
 
-	genes_by_haploblock = Parallel(n_jobs=10)(delayed(evaluate_gene_haploblocks)(sample, heterozygous_sites.get(sample, {}).get("chr6", [])) for sample in samples)
-
-	for sample, gene_list in genes_by_haploblock:
+	for sample, gene_list, sample_incomplete_data in genes_by_haploblock:
 		gene_haploblock_dict[sample] = gene_list
+		incomplete_data.extend(sample_incomplete_data)  # Collect all returned incomplete data
 
 	write_results()
 	make_heatmap_data()
