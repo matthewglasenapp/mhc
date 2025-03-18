@@ -5,7 +5,8 @@ library(dplyr)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/phase_heat_map/")
 
 # Load heatmap data
-data <- read.csv("phase_map_hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
+#data <- read.csv("phase_map_hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
+data <- read.csv("whatshap_phase_map.csv", header = TRUE, stringsAsFactors = FALSE)
 colnames(data) <- gsub("\\.", "-", colnames(data))  # Replace dots with dashes
 
 # Convert samples and genes into factors to preserve order
@@ -23,13 +24,13 @@ df_long$sample <- factor(df_long$sample, levels = sample_order)
 df_long$Gene <- factor(df_long$Gene, levels = gene_order)
 
 # Load incomplete.csv and format labels
-incomplete <- read.csv("incomplete.csv", header = TRUE, stringsAsFactors = FALSE)
-incomplete$label <- paste0(incomplete$num_haploblocks, " (", incomplete$prop_phased, ")")
+#incomplete <- read.csv("incomplete.csv", header = TRUE, stringsAsFactors = FALSE)
+#incomplete$label <- paste0(incomplete$num_haploblocks, " (", incomplete$prop_phased, ")")
 
 # Merge `incomplete.csv` with `df_long` while preserving order
-df_long <- df_long %>%
-  left_join(incomplete, by = c("sample", "Gene" = "gene")) %>%
-  mutate(label = ifelse(Value == 0, label, NA))  # Only label missing/0 tiles
+#df_long <- df_long %>%
+  #left_join(incomplete, by = c("sample", "Gene" = "gene")) %>%
+  #mutate(label = ifelse(Value == 0, label, NA))  # Only label missing/0 tiles
 
 # Ensure factor levels remain correct after merge
 df_long$sample <- factor(df_long$sample, levels = sample_order)
@@ -56,10 +57,10 @@ figure <- ggplot(df_long, aes(x = Gene, y = sample, fill = Value)) +
 print(figure)
 
 # Save the figure
-ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
-ggsave(filename = "hiphase_heat_map.png", plot = figure)
-#ggsave(filename = "whatshap_heat_map.pdf", plot = figure)
-#ggsave(filename = "whatshap_heat_map.png", plot = figure)
+#ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
+#ggsave(filename = "hiphase_heat_map.png", plot = figure)
+ggsave(filename = "whatshap_heat_map.pdf", plot = figure)
+ggsave(filename = "whatshap_heat_map.png", plot = figure)
 
 # Load necessary library
 library(dplyr)
