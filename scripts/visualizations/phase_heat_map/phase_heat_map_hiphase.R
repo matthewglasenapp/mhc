@@ -39,7 +39,7 @@ df_long$Gene <- factor(df_long$Gene, levels = gene_order)
 figure <- ggplot(df_long, aes(x = Gene, y = sample, fill = Value)) +
   geom_tile(color = "white") +
   scale_fill_gradient(low = "white", high = "red", na.value = "white") +
-  geom_text(aes(label = label), size = 3, na.rm = TRUE) +  # Add text only to missing/0 tiles
+  #geom_text(aes(label = label), size = 3, na.rm = TRUE) +  # Add text only to missing/0 tiles
   theme_minimal() +
   theme(
     axis.text.x = element_text(size = 8),
