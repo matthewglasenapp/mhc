@@ -266,26 +266,26 @@ def write_results(mhc_class):
 				writer.writerow([proportion, avg_depth, variant_type, "F1", f1_score])
 
 def main():
-	make_output_dirs()
-	split_bam()
+	#make_output_dirs()
+	#split_bam()
 	for mhc_class in mhc_classes:
 		for n in proportion_retain:
 			print(f"\nProcessing {mhc_class} at {n*100:.1f}% downsampling")
-			downsample_bams(n)
+			#downsample_bams(n)
 			#merge_downsampled_bams(n)
-			run_mosdepth(n, mhc_class)
-			parse_mosdepth(n, mhc_class)
+			#run_mosdepth(n, mhc_class)
+			#parse_mosdepth(n, mhc_class)
 
 			num_reads = count_reads(n, mhc_class)
 
 			if num_reads >= min_reads:
-				call_variants(n, mhc_class)
-				#run_happy(n, mhc_class)
-				#parse_happy(n, mhc_class)
+				#call_variants(n, mhc_class)
+				run_happy(n, mhc_class)
+				parse_happy(n, mhc_class)
 			else:
 				print("Insufficient Reads for Variant Calling at {} Downample".format(n))
 
-			#write_results(mhc_class)
+			write_results(mhc_class)
 
 if __name__ == "__main__":
 	main()
