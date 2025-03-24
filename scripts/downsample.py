@@ -274,7 +274,7 @@ def main():
 			#downsample_bams(n)
 			#merge_downsampled_bams(n)
 			#run_mosdepth(n, mhc_class)
-			#parse_mosdepth(n, mhc_class)
+			parse_mosdepth(n, mhc_class)
 
 			num_reads = count_reads(n, mhc_class)
 

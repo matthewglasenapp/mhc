@@ -30,7 +30,7 @@ plot_variant <- function(variant_to_plot, show_legend = TRUE) {
     # ✅ Add Depth annotations below x-axis (rounded)
     geom_text(data = depth_labels, aes(x = Proportion, y = min(filtered_data$Value) - 0.05, 
                                        label = paste0(Depth, "X")), 
-              color = "black", size = 3, vjust = 0.5, inherit.aes = FALSE) +
+              color = "black", size = 1.5, vjust = 0.5, inherit.aes = FALSE) +
     
     theme(
       legend.position = ifelse(show_legend, "right", "none"),  # ✅ Hide legend for SNP panel
