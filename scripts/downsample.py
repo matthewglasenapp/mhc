@@ -11,7 +11,8 @@ MHC_III = "chr6:31519479-32407181"
 MHC_II = "chr6:32439877-33409896"
 
 sample = "HG002"
-mhc_classes = ["MHC_Class_I", "MHC_Class_II"]
+# mhc_classes = ["MHC_Class_I", "MHC_Class_II"]
+mhc_classes = ["MHC_Class_III"]
 
 root_dir = "/hb/scratch/mglasena/downsample/"
 reference_fasta = os.path.join(root_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
@@ -21,11 +22,13 @@ mapped_bam_file = "/hb/scratch/mglasena/test_pacbio/processed_data/mapped_bam/HG
 giab_benchmark_dir = "/hb/scratch/mglasena/MHC/concordance/GIAB_benchmark/"
 regions_file_class_I = "/hb/scratch/mglasena/downsample/merged_hla_legacy_class_I_subset.bed"
 regions_file_class_II = "/hb/scratch/mglasena/downsample/merged_hla_legacy_class_II_subset.bed"
+regions_file_class_III = "/hb/scratch/mglasena/downsample/merged_hla_legacy_class_III_subset.bed"
 rtg_path = "/hb/home/mglasena/.conda/envs/happy/bin/rtg"
 rtg_template = "/hb/scratch/mglasena/MHC/concordance/hap_py_input/rtg_sdf_template"
 
 mosdepth_regions_file_class_I = "/hb/scratch/mglasena/downsample/mhc_class_I_mosdepth_regions.bed"
 mosdepth_regions_file_class_II = "/hb/scratch/mglasena/downsample/mhc_class_II_mosdepth_regions.bed"
+mosdepth_regions_file_class_III = "/hb/scratch/mglasena/downsample/mhc_class_III_mosdepth_regions.bed"
 
 # Random Seed
 random_seed = 42
@@ -95,6 +98,8 @@ def run_mosdepth(proportion, mhc_class):
 		regions = mosdepth_regions_file_class_I
 	elif mhc_class == "MHC_Class_II":
 		regions = mosdepth_regions_file_class_II
+	elif mhc_class == "MHC_Class_III":
+		regions = mosdepth_regions_file_class_III
 	
 	input_dir = os.path.join(root_dir, str(proportion))
 	input_bam = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.bam")
@@ -204,6 +209,8 @@ def run_happy(proportion, mhc_class):
 		regions = regions_file_class_I
 	elif mhc_class == "MHC_Class_II":
 		regions = regions_file_class_II
+	elif mhc_class == "MHC_Class_III":
+		regions = regions_file_class_III
 
 	#query_vcf = os.path.join(root_dir, str(proportion), "merged_downsampled.vcf.gz")
 	query_vcf = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.vcf.gz")
