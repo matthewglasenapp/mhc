@@ -6,8 +6,9 @@ library(patchwork)  # Load patchwork for side-by-side plots
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/downsample/")
 
 # Load the CSV file
-data <- read.csv("MHC_Class_I_downsample_concordance.csv")
+#data <- read.csv("MHC_Class_I_downsample_concordance.csv")
 #data <- read.csv("MHC_Class_II_downsample_concordance.csv")
+data <- read.csv("MHC_Class_III_downsample_concordance.csv")
 
 # Function to create the plot for a given variant type
 plot_variant <- function(variant_to_plot, show_legend = TRUE) {
@@ -55,17 +56,20 @@ plot_indel <- plot_variant("INDEL", show_legend = TRUE)
 
 # Combine them side by side with patchwork & ADD OVERALL TITLE
 final_plot <- (plot_snp / plot_indel) + 
-  plot_annotation(title = "HLA Class I Genotype Concordance")
+  plot_annotation(title = "HLA Class III Genotype Concordance")
 
 # Display the final combined plot
 print(final_plot)
 
 
-ggsave("mhc_I_downsample.pdf", plot = final_plot, width = 8, height = 10)
-ggsave("mhc_I_downsample.png", plot = final_plot, width = 8, height = 10, dpi = 300)
+#ggsave("mhc_I_downsample.pdf", plot = final_plot, width = 8, height = 10)
+#ggsave("mhc_I_downsample.png", plot = final_plot, width = 8, height = 10, dpi = 300)
 
 #ggsave("mhc_II_downsample.pdf", plot = final_plot, width = 8, height = 10)
 #ggsave("mhc_II_downsample.png", plot = final_plot, width = 8, height = 10, dpi = 300)
+
+ggsave("mhc_III_downsample.pdf", plot = final_plot, width = 8, height = 10)
+ggsave("mhc_III_downsample.png", plot = final_plot, width = 8, height = 10, dpi = 300)
 
 
 
