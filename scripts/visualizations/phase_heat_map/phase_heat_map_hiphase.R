@@ -6,7 +6,8 @@ setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/phase_heat_map/")
 
 # Load heatmap data
 #data <- read.csv("phase_map_hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
-data <- read.csv("whatshap_phase_map.csv", header = TRUE, stringsAsFactors = FALSE)
+#data <- read.csv("whatshap_phase_map.csv", header = TRUE, stringsAsFactors = FALSE)
+data <- read.csv("promethion_phase_map.csv", header = TRUE, stringsAsFactors = FALSE)
 colnames(data) <- gsub("\\.", "-", colnames(data))  # Replace dots with dashes
 
 # Convert samples and genes into factors to preserve order
@@ -57,10 +58,12 @@ figure <- ggplot(df_long, aes(x = Gene, y = sample, fill = Value)) +
 print(figure)
 
 # Save the figure
-ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
-ggsave(filename = "hiphase_heat_map.png", plot = figure)
+#ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
+#ggsave(filename = "hiphase_heat_map.png", plot = figure)
 #ggsave(filename = "whatshap_heat_map.pdf", plot = figure)
 #ggsave(filename = "whatshap_heat_map.png", plot = figure)
+ggsave(filename = "promethion_whatshap_heat_map.pdf", plot = figure)
+ggsave(filename = "promethion_whatshap_heat_map.png", plot = figure)
 
 # Load necessary library
 library(dplyr)
