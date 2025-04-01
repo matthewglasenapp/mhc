@@ -5,16 +5,16 @@ import pysam
 from joblib import Parallel, delayed
 
 # For HiPhase
-#haploblock_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
-#vcf_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
+haploblock_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
+vcf_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
 
 # For WhatsHap
 #haploblock_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_whatshap"
 #vcf_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_whatshap"
 
 # For PromethION WhatsHap
-haploblock_dir = "/hb/scratch/mglasena/MHC/scripts/haploblocks/"
-vcf_dir = "/hb/scratch/mglasena/MHC/genotypes/promethion/"
+#haploblock_dir = "/hb/scratch/mglasena/MHC/scripts/haploblocks/"
+#vcf_dir = "/hb/scratch/mglasena/MHC/genotypes/promethion/"
 
 #genes_bed = "hla_captured_genes.bed"
 genes_bed = "test.bed"
@@ -62,10 +62,10 @@ def load_heterozygous_variants():
 
 	for sample in samples:
 		# For HiPhase/WhatsHap Revio
-		#vcf_file = os.path.join(vcf_dir, f"{sample}.dedup.trimmed.hg38.chr6.phased.vcf.gz")
+		vcf_file = os.path.join(vcf_dir, f"{sample}.dedup.trimmed.hg38.chr6.SNV.phased.vcf.gz")
 		
 		# For old PromethION WhatsHap
-		vcf_file = os.path.join(vcf_dir, sample, f"{sample}.hg38.promethion.phased.vcf.gz")
+		#vcf_file = os.path.join(vcf_dir, sample, f"{sample}.hg38.promethion.phased.vcf.gz")
 
 		vcf = pysam.VariantFile(vcf_file)
 
@@ -77,11 +77,11 @@ def load_heterozygous_variants():
 				continue
 
 			# For Revio HiPhase/WhatsHap
-			#genotype = record.samples[sample]["GT"]
+			genotype = record.samples[sample]["GT"]
 
 			# For old WhatsHap
-			sample_name = list(vcf.header.samples)[0]
-			genotype = record.samples[sample_name]["GT"]
+			#sample_name = list(vcf.header.samples)[0]
+			#genotype = record.samples[sample_name]["GT"]
 
 			if genotype in [(0, 1), (1, 0)]:
 				heterozygous_sites[sample]["chr6"].append(record.pos)
@@ -99,7 +99,7 @@ def parse_haploblocks(sample, het_sites):
 	# For WhatsHap[]
 	#haploblock_file = os.path.join(haploblock_dir, f"{sample}.phased.haploblocks.txt")
 	# For PromethION WhatsHap
-	haploblock_file = os.path.join(haploblock_dir, f"{sample}_promethion_haploblocks.tsv")
+	#haploblock_file = os.path.join(haploblock_dir, f"{sample}_promethion_haploblocks.tsv")
 
 	print(f"Parsing {sample} haploblock file!")
 
@@ -109,13 +109,13 @@ def parse_haploblocks(sample, het_sites):
 	for line in haploblocks[1:]:
 		fields = line.split("\t")
 		#For HiPhase
-		# chromosome = fields[3]
-		# start = int(fields[4]) - 1
-		# stop = int(fields[5])
+		chromosome = fields[3]
+		start = int(fields[4]) - 1
+		stop = int(fields[5])
 		# For WhatsHap
-		chromosome = fields[1]
-		start = int(fields[3]) - 1
-		stop = int(fields[4])
+		# chromosome = fields[1]
+		# start = int(fields[3]) - 1
+		# stop = int(fields[4])
 
 		if chromosome == "chr6" and stop > mhc_start:
 			haploblock_list.append([start,stop])

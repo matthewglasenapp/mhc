@@ -500,33 +500,37 @@ def main():
 	# Check that all required tools are installed
 	check_required_commands()
 
-	for sample_ID, sample_read_group_string in sample_dict.items():
-		start_time = time.time()
-		sample = Samples(sample_ID, sample_read_group_string)
-		sample.convert_bam_to_fastq()
-		sample.mark_duplicates()
-		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-		sample.trim_adapters()
-		sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-		sample.align_to_reference()
-		
-		chr6_reads = sample.filter_reads()
+	array_id = os.environ["array_id"]
+	print("Array ID: {}".format(array_id))
+	sample_ID = list(sample_dict)[int(array_id)]
+	sample_read_group_string = sample_dict[sample_ID]
+	print(sample_ID)
+	start_time = time.time()
+	sample = Samples(sample_ID, sample_read_group_string)
+	sample.convert_bam_to_fastq()
+	sample.mark_duplicates()
+	#sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
+	sample.trim_adapters()
+	#sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
+	sample.align_to_reference()
+	
+	chr6_reads = sample.filter_reads()
 
-		if chr6_reads > min_reads_sample:
-			sample.call_variants()
-			sample.call_structural_variants()
-			sample.genotype_tandem_repeats()
-			sample.merge_vcfs()
-			sample.phase_genotypes_hiphase()
-			sample.phase_genotypes_whatshap()
-			end_time = time.time()
-			elapsed_time = end_time - start_time
-			minutes, seconds = divmod(elapsed_time,60)
-			print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
-		
-		else:
-			print("Insufficient reads for variant calling")
-			print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
+	if chr6_reads > min_reads_sample:
+		sample.call_variants()
+		sample.call_structural_variants()
+		sample.genotype_tandem_repeats()
+		sample.merge_vcfs()
+		sample.phase_genotypes_hiphase()
+		sample.phase_genotypes_whatshap()
+		end_time = time.time()
+		elapsed_time = end_time - start_time
+		minutes, seconds = divmod(elapsed_time,60)
+		print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+	
+	else:
+		print("Insufficient reads for variant calling")
+		print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
 
 if __name__ == "__main__":
 	main()
