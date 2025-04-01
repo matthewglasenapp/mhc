@@ -4,17 +4,35 @@ import json
 import pysam
 from joblib import Parallel, delayed
 
-# For HiPhase
-haploblock_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
-vcf_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_hiphase/"
+phasers = ["hiphase", "whatshap", "promethion"]
 
-# For WhatsHap
-#haploblock_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_whatshap"
-#vcf_dir = "/hb/scratch/mglasena/test_pacbio/processed_data/phased_vcf_whatshap"
+# Choose tool: "hiphase", "whatshap", or "promethion"
+PHASER = "hiphase"
 
-# For PromethION WhatsHap
-#haploblock_dir = "/hb/scratch/mglasena/MHC/scripts/haploblocks/"
-#vcf_dir = "/hb/scratch/mglasena/MHC/genotypes/promethion/"
+# Config for each tool
+config = {
+	"hiphase": {
+		"vcf_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_hiphase/",
+		"haploblock_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_hiphase/",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
+		"haploblock_suffix": ".phased.blocks.txt",
+		"haploblock_parse": lambda fields: ("chr6", int(fields[4]) - 1, int(fields[5]))
+	},
+	"whatshap": {
+		"vcf_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/",
+		"haploblock_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
+		"haploblock_suffix": ".phased.haploblocks.txt",
+		"haploblock_parse": lambda fields: (fields[1], int(fields[3]) - 1, int(fields[4]))
+	},
+	"promethion": {
+		"vcf_dir": "/hb/scratch/mglasena/MHC/genotypes/promethion/",
+		"haploblock_dir": "/hb/scratch/mglasena/MHC/scripts/haploblocks/",
+		"vcf_suffix": ".hg38.promethion.phased.vcf.gz",
+		"haploblock_suffix": "_promethion_haploblocks.tsv",
+		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
+	}
+}
 
 #genes_bed = "hla_captured_genes.bed"
 genes_bed = "test.bed"
@@ -26,25 +44,9 @@ genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DRB5", "HLA-DQA
 # {"gene_name": [start, stop]}
 genes_dict = dict()
 
-# {"sample_id": [[haploblock_1_start, haploblock_1_stop]]}
-haploblock_dict = {sample: [] for sample in samples}
-
-# {"sample_id": [phased_genes]}
-gene_haploblock_dict = {sample: [] for sample in samples}
-
-incomplete_data = []
-
 # Extended MHC coordinates
 mhc_start = 29555628
 mhc_stop = 33409896
-
-# Output files
-phased_genes_by_sample_csv = "phased_genes.tsv"
-phased_genes_by_sample_json = "phased_genes.json"
-phase_map_csv = "phase_map.csv"
-
-# For unphased genes of interest, [gene, sample, haploblocks, prop_bases_phased]
-incomplete_file = "incomplete.csv"
 
 # Populate dictionary of captured genes with gene name and start and stop coordinates
 def create_genes_dict():
@@ -56,33 +58,31 @@ def create_genes_dict():
 		stop = int(fields[2])
 		genes_dict[name] = [start, stop]
 
-# Load heterozygous variants from HiPhase VCF
-def load_heterozygous_variants():
+# Load heterozygous variants from VCF
+def load_heterozygous_variants(params):
 	heterozygous_sites = {sample: {"chr6": []} for sample in samples}
 
 	for sample in samples:
-		# For HiPhase/WhatsHap Revio
-		vcf_file = os.path.join(vcf_dir, f"{sample}.dedup.trimmed.hg38.chr6.SNV.phased.vcf.gz")
-		
-		# For old PromethION WhatsHap
-		#vcf_file = os.path.join(vcf_dir, sample, f"{sample}.hg38.promethion.phased.vcf.gz")
+		if "promethion" in params["vcf_dir"]:
+			vcf_file = os.path.join(params["vcf_dir"], sample, f"{sample}{params['vcf_suffix']}")
+			sample_name = "SAMPLE"
+		else:
+			vcf_file = os.path.join(params["vcf_dir"], f"{sample}{params['vcf_suffix']}")
+			sample_name = sample
 
 		vcf = pysam.VariantFile(vcf_file)
 
 		for record in vcf:
 			if record.chrom != "chr6":
 				continue
-
 			if record.pos < mhc_start or record.pos > mhc_stop:
 				continue
 
-			# For Revio HiPhase/WhatsHap
-			genotype = record.samples[sample]["GT"]
+			# Safety check in case sample_name is missing in the VCF
+			if sample_name not in record.samples:
+				raise ValueError(f"Sample '{sample_name}' not found in {vcf_file}")
 
-			# For old WhatsHap
-			#sample_name = list(vcf.header.samples)[0]
-			#genotype = record.samples[sample_name]["GT"]
-
+			genotype = record.samples[sample_name]["GT"]
 			if genotype in [(0, 1), (1, 0)]:
 				heterozygous_sites[sample]["chr6"].append(record.pos)
 
@@ -90,16 +90,11 @@ def load_heterozygous_variants():
 
 	return heterozygous_sites
 
-# Get list of HiPhase haploblock intervals for MHC
-def parse_haploblocks(sample, het_sites):
+# Get list of haploblock intervals for MHC
+def parse_haploblocks(sample, het_sites, params):
 	haploblock_list = []
-	
-	# For HiPhase
-	haploblock_file = os.path.join(haploblock_dir, f"{sample}.phased.blocks.txt")
-	# For WhatsHap[]
-	#haploblock_file = os.path.join(haploblock_dir, f"{sample}.phased.haploblocks.txt")
-	# For PromethION WhatsHap
-	#haploblock_file = os.path.join(haploblock_dir, f"{sample}_promethion_haploblocks.tsv")
+
+	haploblock_file = os.path.join(params["haploblock_dir"], f"{sample}{params['haploblock_suffix']}")
 
 	print(f"Parsing {sample} haploblock file!")
 
@@ -108,14 +103,7 @@ def parse_haploblocks(sample, het_sites):
 
 	for line in haploblocks[1:]:
 		fields = line.split("\t")
-		#For HiPhase
-		chromosome = fields[3]
-		start = int(fields[4]) - 1
-		stop = int(fields[5])
-		# For WhatsHap
-		# chromosome = fields[1]
-		# start = int(fields[3]) - 1
-		# stop = int(fields[4])
+		chromosome, start, stop = params["haploblock_parse"](fields)
 
 		if chromosome == "chr6" and stop > mhc_start:
 			haploblock_list.append([start,stop])
@@ -123,16 +111,13 @@ def parse_haploblocks(sample, het_sites):
 	return sample, haploblock_list
 
 # Check whether each captured MHC gene is completely spanned by a haploblock
-def evaluate_gene_haploblocks(sample, het_sites):
+def evaluate_gene_haploblocks(sample, het_sites, haploblocks):
 	# List of fully phased genes
 	gene_list = []
 	
 	# List of genes with partially overlapping haploblock
 	sample_incomplete_data = []
 	
-
-	haploblocks = haploblock_dict[sample]
-
 	for gene in genes_dict:
 		gene_start = genes_dict[gene][0]
 		gene_stop = genes_dict[gene][1]
@@ -219,29 +204,29 @@ def evaluate_gene_haploblocks(sample, het_sites):
 
 	return sample, gene_list, sample_incomplete_data
 
-def write_results():
+def write_results(phaser, gene_haploblock_dict, incomplete_data):
 	# Write fully phased genes
-	with open(phased_genes_by_sample_csv, "w", newline="") as csv_file:
+	with open(f"phased_genes.{phaser}.tsv", "w", newline="") as csv_file:
 		writer = csv.writer(csv_file, delimiter="\t")
 		writer.writerow(["sample", "num_genes", "genes"])
 		for sample, gene_list in gene_haploblock_dict.items():
 			writer.writerow([sample, len(gene_list), ",".join(gene_list)])
 
-	with open(phased_genes_by_sample_json, "w") as json_file:
+	with open(f"phased_genes.{phaser}.json", "w") as json_file:
 		json.dump(gene_haploblock_dict, json_file, indent=4)
 
 	# Write incomplete.csv if there are entries 
 	if incomplete_data:
-		with open(incomplete_file, "w", newline="") as csvfile:
+		with open(f"incomplete.{phaser}.csv", "w", newline="") as csvfile:
 			csv_writer = csv.writer(csvfile)
 			csv_writer.writerow(["sample", "gene", "num_haploblocks", "prop_phased"])
 			csv_writer.writerows(incomplete_data)
 
-def make_heatmap_data():
+def make_heatmap_data(phaser, gene_haploblock_dict, incomplete_data):
 	phased_count_dict = {gene: 0 for gene in genes_of_interest}
 	phased_status_dict = {sample: [] for sample in samples}
 
-	with open(phased_genes_by_sample_csv, "r") as f:
+	with open(f"phased_genes.{phaser}.tsv", "r") as f:
 		records = f.read().splitlines()[1:]
 
 	for item in records:
@@ -256,7 +241,7 @@ def make_heatmap_data():
 			else:
 				phased_status_dict[sample].append(0)
 
-	with open(phase_map_csv, "w", newline="") as csv_file:
+	with open(f"phase_map.{phaser}.csv", "w", newline="") as csv_file:
 		writer = csv.writer(csv_file, delimiter=",")
 		header = ["sample", "HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DRB5", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1"]
 		writer.writerow(header)
@@ -269,23 +254,34 @@ def make_heatmap_data():
 
 def main():
 	create_genes_dict()
-	heterozygous_sites = load_heterozygous_variants()
 
-	haploblocks_by_sample = Parallel(n_jobs=10)(
-		delayed(parse_haploblocks)(sample, heterozygous_sites.get(sample, {}).get("chr6", [])) for sample in samples)
+	for phaser in phasers:
+		print("Processing {} data!".format(phaser))
+		params = config[phaser]
 
-	for sample, haploblock_list in haploblocks_by_sample:
-		haploblock_dict[sample] = haploblock_list
+		# {"sample_id": [[haploblock_1_start, haploblock_1_stop]]}
+		haploblock_dict = {sample: [] for sample in samples}
+		# {"sample_id": [phased_genes]}
+		gene_haploblock_dict = {sample: [] for sample in samples}
+		incomplete_data = []
 
-	genes_by_haploblock = Parallel(n_jobs=10)(
-		delayed(evaluate_gene_haploblocks)(sample, heterozygous_sites.get(sample, {}).get("chr6", [])) for sample in samples)
+		heterozygous_sites = load_heterozygous_variants(params)
 
-	for sample, gene_list, sample_incomplete_data in genes_by_haploblock:
-		gene_haploblock_dict[sample] = gene_list
-		incomplete_data.extend(sample_incomplete_data)
+		haploblocks_by_sample = Parallel(n_jobs=10)(
+			delayed(parse_haploblocks)(sample, heterozygous_sites.get(sample, {}).get("chr6", []), params) for sample in samples)
 
-	write_results()
-	make_heatmap_data()
+		for sample, haploblock_list in haploblocks_by_sample:
+			haploblock_dict[sample] = haploblock_list
+
+		genes_by_haploblock = Parallel(n_jobs=10)(
+			delayed(evaluate_gene_haploblocks)(sample, heterozygous_sites.get(sample, {}).get("chr6", []), haploblock_dict[sample]) for sample in samples)
+
+		for sample, gene_list, sample_incomplete_data in genes_by_haploblock:
+			gene_haploblock_dict[sample] = gene_list
+			incomplete_data.extend(sample_incomplete_data)
+
+		write_results(phaser, gene_haploblock_dict, incomplete_data)
+		make_heatmap_data(phaser, gene_haploblock_dict, incomplete_data)
 	
 if __name__ == "__main__":
 	main()
