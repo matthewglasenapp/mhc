@@ -38,38 +38,38 @@ clair3_model_path = "/hb/home/mglasena/.conda/envs/clair3/bin/models/r941_prom_s
 # Sample ID: Read Group String
 sample_dict = {
 	"HG002" : "@RG\tID:m84039_240622_113450_s1\tSM:HG002",
-	# "HG003" : "@RG\tID:m84039_240622_113450_s1\tSM:HG003",
-	# "HG004" : "@RG\tID:m84039_240622_113450_s1\tSM:HG004",
-	# "HG005" : "@RG\tID:m84039_240622_113450_s1\tSM:HG005",
-	# "HG01106" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01106",
-	# "HG01258" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01258",
-	# "HG01891" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01891",
-	# "HG01928" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01928",
-	# "HG02055" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02055",
-	# "HG02630" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02630",
-	# "HG03492" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03492",
-	# "HG03579" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03579",
-	# "IHW09021" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09021",
-	# "IHW09049" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09049",
-	# "IHW09071" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09071",
-	# "IHW09117" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09117",
-	# "IHW09118" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09118",
-	# "IHW09122" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09122",
-	# "IHW09125" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09125",
-	# "IHW09175" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09175",
-	# "IHW09198" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09198",
-	# "IHW09200" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09200",
-	# "IHW09224" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09224",
-	# "IHW09245" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09245",
-	# "IHW09251" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09251",
-	# "IHW09359" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09359",
-	# "IHW09364" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09364",
-	# "IHW09409" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09409",
-	# "NA19240" : "@RG\tID:m84039_240622_113450_s1\tSM:NA19240",
-	# "NA20129" : "@RG\tID:m84039_240622_113450_s1\tSM:NA20129",
-	# "NA21309" : "@RG\tID:m84039_240622_113450_s1\tSM:NA21309",
-	# "NA24694" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24694",
-	# "NA24695" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24695"
+	"HG003" : "@RG\tID:m84039_240622_113450_s1\tSM:HG003",
+	"HG004" : "@RG\tID:m84039_240622_113450_s1\tSM:HG004",
+	"HG005" : "@RG\tID:m84039_240622_113450_s1\tSM:HG005",
+	"HG01106" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01106",
+	"HG01258" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01258",
+	"HG01891" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01891",
+	"HG01928" : "@RG\tID:m84039_240622_113450_s1\tSM:HG01928",
+	"HG02055" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02055",
+	"HG02630" : "@RG\tID:m84039_240622_113450_s1\tSM:HG02630",
+	"HG03492" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03492",
+	"HG03579" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03579",
+	"IHW09021" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09021",
+	"IHW09049" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09049",
+	"IHW09071" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09071",
+	"IHW09117" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09117",
+	"IHW09118" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09118",
+	"IHW09122" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09122",
+	"IHW09125" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09125",
+	"IHW09175" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09175",
+	"IHW09198" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09198",
+	"IHW09200" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09200",
+	"IHW09224" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09224",
+	"IHW09245" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09245",
+	"IHW09251" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09251",
+	"IHW09359" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09359",
+	"IHW09364" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09364",
+	"IHW09409" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09409",
+	"NA19240" : "@RG\tID:m84039_240622_113450_s1\tSM:NA19240",
+	"NA20129" : "@RG\tID:m84039_240622_113450_s1\tSM:NA20129",
+	"NA21309" : "@RG\tID:m84039_240622_113450_s1\tSM:NA21309",
+	"NA24694" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24694",
+	"NA24695" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24695"
 }
 
 # Ensure all required tools are installed and executable
@@ -86,7 +86,7 @@ def check_required_commands():
 		"pigz",
 		"porechop_abi",
 		"samtools",
-		"singularity",
+		"sniffles",
 		"tabix",
 		"whatshap"
 	]
@@ -304,34 +304,38 @@ class Samples:
 
 def main():
 	# Check that all required tools are installed
-	#check_required_commands()
+	check_required_commands()
 
 	# run_dorado()
 	# rename_demux_bams()
 
-	for sample_ID, sample_read_group_string in sample_dict.items():
-		start_time = time.time()
-		sample = Samples(sample_ID, sample_read_group_string)
-		# sample.convert_bam_to_fastq()
-		# sample.run_porechop_abi()
-		# sample.trim_reads()
-		# sample.align_to_reference()
-		# sample.mark_duplicates()
+	array_id = os.environ["array_id"]
+	print("Array ID: {}".format(array_id))
+	sample_ID = list(sample_dict)[int(array_id)]
+	sample_read_group_string = sample_dict[sample_ID]
+	print(sample_ID)
+	start_time = time.time()
+	sample = Samples(sample_ID, sample_read_group_string)
+	sample.convert_bam_to_fastq()
+	sample.run_porechop_abi()
+	sample.trim_reads()
+	sample.align_to_reference()
+	sample.mark_duplicates()
 
-		chr6_reads = sample.filter_reads()
+	# chr6_reads = sample.filter_reads()
 
-		if chr6_reads > min_reads_sample:
-		    # sample.call_variants()
-		    # sample.call_structural_variants()
-		    sample.phase_genotypes_whatshap()
-		#     end_time = time.time()
-		#     elapsed_time = end_time - start_time
-		#     minutes, seconds = divmod(elapsed_time,60)
-		#     print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+	# if chr6_reads > min_reads_sample:
+	#     # sample.call_variants()
+	#     # sample.call_structural_variants()
+	#     sample.phase_genotypes_whatshap()
+	#     end_time = time.time()
+	#     elapsed_time = end_time - start_time
+	#     minutes, seconds = divmod(elapsed_time,60)
+	#     print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
 
-		# else:
-		#     print("Insufficient reads for variant calling")
-		#     print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
+	# else:
+	#     print("Insufficient reads for variant calling")
+	#     print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
 
 if __name__ == "__main__":
 	main()
