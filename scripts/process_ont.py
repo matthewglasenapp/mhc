@@ -168,7 +168,7 @@ class Samples:
 
 		prowler_trimmer_cmd = 'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'.format(prowler_trimmer = prowler_trimmer, input_dir = input_fastq_dir, input_file = input_fastq_file, output_dir = input_fastq_dir)
 
-		#subprocess.run(prowler_trimmer_cmd, shell=True, check=True)
+		subprocess.run(prowler_trimmer_cmd, shell=True, check=True)
 
 		trimmed_fastq = os.path.join(Samples.fastq_porechop_dir, self.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq")
 		pigz_cmd = "pigz -p {threads} {input_file}".format(threads = max_threads, input_file = trimmed_fastq)
@@ -316,8 +316,8 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	sample.convert_bam_to_fastq()
-	sample.run_porechop_abi()
+	# sample.convert_bam_to_fastq()
+	# sample.run_porechop_abi()
 	sample.trim_reads()
 	sample.align_to_reference()
 	sample.mark_duplicates()
