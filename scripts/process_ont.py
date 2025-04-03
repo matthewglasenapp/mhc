@@ -259,7 +259,7 @@ class Samples:
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
 		output_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.sniffles.vcf.gz")
 
-		sniffles_cmd = "sniffles -t {threads} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
+		sniffles_cmd = "sniffles --allow-overwrite -t {threads} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
 		subprocess.run(sniffles_cmd, shell=True, check=True)
 
 	def phase_genotypes_whatshap(self):
@@ -320,24 +320,24 @@ def main():
 	sample = Samples(sample_ID, sample_read_group_string)
 	# sample.convert_bam_to_fastq()
 	# sample.run_porechop_abi()
-	sample.trim_reads()
-	sample.align_to_reference()
-	sample.mark_duplicates()
+	# sample.trim_reads()
+	# sample.align_to_reference()
+	# sample.mark_duplicates()
 
-	# chr6_reads = sample.filter_reads()
+	chr6_reads = sample.filter_reads()
 
-	# if chr6_reads > min_reads_sample:
-	# 	sample.call_variants()
-	#     # sample.call_structural_variants()
-	#     sample.phase_genotypes_whatshap()
-	#     end_time = time.time()
-	#     elapsed_time = end_time - start_time
-	#     minutes, seconds = divmod(elapsed_time,60)
-	#     print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+	if chr6_reads > min_reads_sample:
+		# sample.call_variants()
+	    sample.call_structural_variants()
+	    sample.phase_genotypes_whatshap()
+	    end_time = time.time()
+	    elapsed_time = end_time - start_time
+	    minutes, seconds = divmod(elapsed_time,60)
+	    print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
 
-	# else:
-	#     print("Insufficient reads for variant calling")
-	#     print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
+	else:
+	    print("Insufficient reads for variant calling")
+	    print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
 
 if __name__ == "__main__":
 	main()
