@@ -153,9 +153,11 @@ class Samples:
 		
 		print("porechop_abi input file: {}".format(input_fastq))
 
+		porechop_threads = 4
+
 		output_fastq = os.path.join(Samples.fastq_porechop_dir, self.sample_ID + ".porechop.fastq")
 		
-		porechop_cmd = "porechop_abi --ab_initio -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = max_threads, output_file = output_fastq)
+		porechop_cmd = "porechop_abi --ab_initio -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = porechop_threads, output_file = output_fastq)
 
 		subprocess.run(porechop_cmd, shell=True, check=True)
 
@@ -171,7 +173,7 @@ class Samples:
 		subprocess.run(prowler_trimmer_cmd, shell=True, check=True)
 
 		trimmed_fastq = os.path.join(Samples.fastq_porechop_dir, self.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq")
-		pigz_cmd = "pigz -p {threads} {input_file}".format(threads = max_threads, input_file = trimmed_fastq)
+		pigz_cmd = "pigz -f -p {threads} {input_file}".format(threads = max_threads, input_file = trimmed_fastq)
 		subprocess.run(pigz_cmd, shell=True, check=True)
 
 	def align_to_reference(self):
@@ -318,14 +320,14 @@ def main():
 	sample = Samples(sample_ID, sample_read_group_string)
 	# sample.convert_bam_to_fastq()
 	# sample.run_porechop_abi()
-	sample.trim_reads()
-	sample.align_to_reference()
-	sample.mark_duplicates()
+	# sample.trim_reads()
+	# sample.align_to_reference()
+	# sample.mark_duplicates()
 
-	# chr6_reads = sample.filter_reads()
+	chr6_reads = sample.filter_reads()
 
-	# if chr6_reads > min_reads_sample:
-	#     # sample.call_variants()
+	if chr6_reads > min_reads_sample:
+		sample.call_variants()
 	#     # sample.call_structural_variants()
 	#     sample.phase_genotypes_whatshap()
 	#     end_time = time.time()
