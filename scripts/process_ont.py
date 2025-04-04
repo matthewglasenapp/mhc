@@ -50,7 +50,7 @@ sample_dict = {
 	# "HG03492" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03492",
 	# "HG03579" : "@RG\tID:m84039_240622_113450_s1\tSM:HG03579",
 	# "IHW09021" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09021",
-	# "IHW09049" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09049",
+	"IHW09049" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09049",
 	# "IHW09071" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09071",
 	# "IHW09117" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09117",
 	# "IHW09118" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09118",
@@ -64,7 +64,7 @@ sample_dict = {
 	# "IHW09251" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09251",
 	# "IHW09359" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09359",
 	# "IHW09364" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09364",
-	"IHW09409" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09409",
+	# "IHW09409" : "@RG\tID:m84039_240622_113450_s1\tSM:IHW09409",
 	# "NA19240" : "@RG\tID:m84039_240622_113450_s1\tSM:NA19240",
 	# "NA20129" : "@RG\tID:m84039_240622_113450_s1\tSM:NA20129",
 	# "NA21309" : "@RG\tID:m84039_240622_113450_s1\tSM:NA21309",
@@ -190,7 +190,7 @@ class Samples:
 		samtools_threads = max_threads - minimap_threads
 		minimap_rg_string = "'{}'".format(self.read_group_string.replace("\t", "\\t"))
 
-		minimap2_cmd = "minimap2 -t {minimap_threads} -ax map-hifi {reference_genome} {input_file} -R {rg_string} | samtools sort -@ {samtools_threads} -o {output_file}".format(minimap_threads = minimap_threads, reference_genome = reference_fasta, input_file = input_fastq, rg_string = minimap_rg_string, samtools_threads = samtools_threads, output_file = output_bam)
+		minimap2_cmd = "minimap2 -t {minimap_threads} -ax map-ont {reference_genome} {input_file} -R {rg_string} | samtools sort -@ {samtools_threads} -o {output_file}".format(minimap_threads = minimap_threads, reference_genome = reference_fasta, input_file = input_fastq, rg_string = minimap_rg_string, samtools_threads = samtools_threads, output_file = output_bam)
 
 		index_bam = "samtools index {input_file}".format(input_file = output_bam)
 		
@@ -320,24 +320,24 @@ def main():
 	sample = Samples(sample_ID, sample_read_group_string)
 	# sample.convert_bam_to_fastq()
 	# sample.run_porechop_abi()
-	# sample.trim_reads()
-	# sample.align_to_reference()
-	# sample.mark_duplicates()
+	sample.trim_reads()
+	sample.align_to_reference()
+	sample.mark_duplicates()
 
-	chr6_reads = sample.filter_reads()
+	# chr6_reads = sample.filter_reads()
 
-	if chr6_reads > min_reads_sample:
-		# sample.call_variants()
-	    sample.call_structural_variants()
-	    sample.phase_genotypes_whatshap()
-	    end_time = time.time()
-	    elapsed_time = end_time - start_time
-	    minutes, seconds = divmod(elapsed_time,60)
-	    print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+	# if chr6_reads > min_reads_sample:
+	# 	sample.call_variants()
+	# 	# sample.call_structural_variants()
+	# 	# sample.phase_genotypes_whatshap()
+	# 	end_time = time.time()
+	# 	elapsed_time = end_time - start_time
+	# 	minutes, seconds = divmod(elapsed_time,60)
+	# 	print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
 
-	else:
-	    print("Insufficient reads for variant calling")
-	    print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
+	# else:
+	# 	print("Insufficient reads for variant calling")
+	# 	print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
 
 if __name__ == "__main__":
 	main()

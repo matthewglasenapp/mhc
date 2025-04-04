@@ -26,10 +26,14 @@ config = {
 		"haploblock_parse": lambda fields: (fields[1], int(fields[3]) - 1, int(fields[4]))
 	},
 	"promethion": {
-		"vcf_dir": "/hb/scratch/mglasena/MHC/genotypes/promethion/",
-		"haploblock_dir": "/hb/scratch/mglasena/MHC/scripts/haploblocks/",
-		"vcf_suffix": ".hg38.promethion.phased.vcf.gz",
-		"haploblock_suffix": "_promethion_haploblocks.tsv",
+		# "vcf_dir": "/hb/scratch/mglasena/MHC/genotypes/promethion/",
+		# "haploblock_dir": "/hb/scratch/mglasena/MHC/scripts/haploblocks/",
+		# "vcf_suffix": ".hg38.promethion.phased.vcf.gz",
+		# "haploblock_suffix": "_promethion_haploblocks.tsv",
+		"vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap",
+		"haploblock_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap",
+		"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz",
+		"haploblock_suffix": ".phased.haploblocks.txt",
 		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
 	}
 }
