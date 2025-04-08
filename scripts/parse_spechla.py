@@ -2,9 +2,6 @@ import os
 import subprocess
 import json
 
-our_pacbio_seqs = "pacbio_fasta_dict.json"
-our_ont_seqs = "ont_fasta_dict.json"
-
 pacbio_hla_call_dir = "/hb/scratch/ogarci12/SPECHLA_HC/PacBio_HLA_Calls"
 ont_hla_call_dir = "/hb/scratch/ogarci12/SPECHLA_HC/ONT_HLA_Calls"
 
@@ -36,31 +33,28 @@ def parse_fasta(platform_dict, file):
 
 		platform_dict[gene][sample].append(seq)
 
-def combine_dicts(our_pacbio_seqs):
-# def combine_dicts(our_pacbio_seqs, our_ont_seqs):
-	with open(our_pacbio_seqs, "r") as f:
-		our_pacbio = json.load(f)
-	# with open(out_ont_seqs, "r") as f:
-	# 	out_ont = json.load(f)
+def combine_dicts(fasta_json):
+	with open(fasta_json, "r") as f:
+		fasta_dict = json.load(f)
 
-	for gene in our_pacbio:
-		for sample in our_pacbio[gene]:
+	for gene in genes_of_interest:
+		for sample in samples:
 			output_file = f"{sample}_{gene}.fa"
 			with open(output_file, "w") as f:
 				f.write(f">{sample}_{gene}_pacbio_1" + "\n")
-				f.write(our_pacbio[gene][sample][0] + "\n")
+				f.write(fasta_dict["Revio"][gene][sample][0] + "\n")
 				
 				f.write(f">{sample}_{gene}_pacbio_2" + "\n")
-				f.write(our_pacbio[gene][sample][1] + "\n")
+				f.write(fasta_dict["Revio"][gene][sample][1] + "\n")
 
-				# f.write(f">{sample}_{gene}_ont_1" + "\n")
-				# f.write(our_ont[gene][sample][0] + "\n")
+				f.write(f">{sample}_{gene}_ont_1" + "\n")
+				f.write(fasta_dict["PromethION"][gene][sample][0] + "\n")
 				
-				# f.write(f">{sample}_{gene}_ont_2" + "\n")
-				# f.write(our_ont[gene][sample][1] + "\n")
+				f.write(f">{sample}_{gene}_ont_2" + "\n")
+				f.write(fasta_dict["PromethION"][gene][sample][1] + "\n")
 				
 				f.write(f">{sample}_{gene}_pacbio_specHLA_1" + "\n")
-				f.write(pacbio_seq_dict[gene][sample][0])
+				f.write(pacbio_seq_dict[gene][sample][0] + "\n")
 				
 				f.write(f">{sample}_{gene}_pacbio_specHLA_2" + "\n")
 				f.write(pacbio_seq_dict[gene][sample][1] + "\n")
@@ -81,8 +75,7 @@ def main():
 	for file in ont_fasta_files:
 		parse_fasta(ont_seq_dict, file)
 
-	combine_dicts(our_pacbio_seqs)
-	# combine_dicts(our_pacbio_seqs, our_ont_seqs)
+	combine_dicts("fasta_dict.json")
 
 if __name__ == "__main__":
 	main()
