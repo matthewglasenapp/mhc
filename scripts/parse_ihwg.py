@@ -1,8 +1,22 @@
 ihw_data_file = "/Users/matt/Downloads/IHW_samples.txt"
-ihw_seq_file = "/Users/matt/Downloads/hla_gen.fasta"
+ihw_seq_file = "/Users/matt/Downloads/hla_nuc.fasta"
 
 ihw_data_dict = dict()
 ihw_seq_dict = dict()
+
+allele_database_counts = {
+	"A": 0,
+	"B": 0,
+	"C": 0,
+	"DPA1": 0,
+	"DPB1": 0,
+	"DQA1": 0,
+	"DQB1": 0,
+	"DRB1": 0,
+	"DRB3": 0,
+	"DRB4": 0,
+	"DRB5": 0
+}
 
 def populate_ihw_dict():
 	with open(ihw_data_file, "r") as f:
@@ -46,9 +60,23 @@ def populate_seq_dict():
 		seq = seq.split("\n",1)[1].replace("\n", "").strip()
 		ihw_seq_dict[name] = seq
 
+def count_seqs():
+	alleles = list(ihw_seq_dict.keys())
+	for allele in alleles:
+		gene = allele.split("*")[0]
+		if gene in allele_database_counts:
+			allele_database_counts[gene] += 1
+		# else:
+		# 	print(allele)
+		# 	print(gene)
+
 def main():
 	populate_ihw_dict()
 	populate_seq_dict()
+	count_seqs()
+
+	# print(len(ihw_seq_dict))
+	print(allele_database_counts)
 
 	IHW09117_allele_1_id = ihw_data_dict["IHW09117"]["hla"]["C"][0]
 	IHW09117_allele_2_id = ihw_data_dict["IHW09117"]["hla"]["C"][1]
@@ -56,10 +84,11 @@ def main():
 	IHW09117_allele_1_seq = ihw_seq_dict[ihw_data_dict["IHW09117"]["hla"]["C"][0]]
 	IHW09117_allele_2_seq = ihw_seq_dict[ihw_data_dict["IHW09117"]["hla"]["C"][1]]
 
-	print(IHW09117_allele_1_id)
-	print(IHW09117_allele_2_id)
-	print(IHW09117_allele_1_seq)
-	print(IHW09117_allele_2_seq)
+	# print(IHW09117_allele_1_id)
+	# print(IHW09117_allele_2_id)
+	# print(IHW09117_allele_1_seq)
+	# print(IHW09117_allele_2_seq)
+
 
 
 if __name__ == "__main__":
