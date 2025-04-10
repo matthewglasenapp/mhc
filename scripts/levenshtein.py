@@ -32,23 +32,12 @@ class SequenceMatcher:
 
 		distances = []
 
-		# best_match = None
-		# best_distance = float('inf')
-
 		for allele_name, reference_sequence in alleles:
 			dist = Levenshtein.distance(query_sequence, reference_sequence)
 			uncertainty = dist / len(query_sequence)
 			distances.append((allele_name, dist, uncertainty))
-			# if dist < best_distance:
-			# 	best_distance = dist
-			# 	best_match = allele_name
 
 		top_matches = sorted(distances, key=lambda x: x[1])[:n]
-
-		# if best_match:
-		# 	print(f"Best Match: {best_match} (distance = {best_distance})")
-		# else:
-		# 	print(f"Error! No matches found for {query_name}")
 
 		if top_matches:
 			print(f"Top {n} Matches:")
