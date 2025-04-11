@@ -84,10 +84,10 @@ def main():
 	IHW09117_allele_1_seq = ihw_seq_dict[ihw_data_dict["IHW09117"]["hla"]["C"][0]]
 	IHW09117_allele_2_seq = ihw_seq_dict[ihw_data_dict["IHW09117"]["hla"]["C"][1]]
 
-	# print(IHW09117_allele_1_id)
-	# print(IHW09117_allele_2_id)
-	# print(IHW09117_allele_1_seq)
-	# print(IHW09117_allele_2_seq)
+	print(IHW09117_allele_1_id)
+	print(IHW09117_allele_2_id)
+	print(IHW09117_allele_1_seq)
+	print(IHW09117_allele_2_seq)
 
 
 

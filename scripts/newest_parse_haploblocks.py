@@ -4,10 +4,7 @@ import json
 import pysam
 from joblib import Parallel, delayed
 
-phasers = ["hiphase", "whatshap", "promethion"]
-
-# Choose tool: "hiphase", "whatshap", or "promethion"
-PHASER = "hiphase"
+phasers = ["longphase", "hiphase", "whatshap", "promethion"]
 
 # Config for each tool
 config = {
@@ -35,7 +32,14 @@ config = {
 		"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz",
 		"haploblock_suffix": ".phased.haploblocks.txt",
 		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
-	}
+	},
+	"longphase": {
+		"vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_longphase",
+		"haploblock_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_longphase",
+		"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz",
+		"haploblock_suffix": ".phased.haploblocks.txt",
+		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
+		}
 }
 
 #genes_bed = "hla_captured_genes.bed"

@@ -72,6 +72,8 @@ sample_dict = {
 	"NA24695" : "@RG\tID:m84039_240622_113450_s1\tSM:NA24695"
 }
 
+longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
+
 # Ensure all required tools are installed and executable
 def check_required_commands():    
 	print("Checking the installation status of the required bioinformatics tools!")
@@ -123,13 +125,14 @@ class Samples:
 	clair3_dir = os.path.join(output_dir, "clair3_vcf")
 	sniffles_dir = os.path.join(output_dir, "sniffles")
 	whatshap_phased_vcf_dir = os.path.join(output_dir, "phased_vcf_whatshap")
+	longphase_phased_vcf_dir = os.path.join(output_dir, "phased_vcf_longphase")
 
 	def __init__(self, sample_ID, read_group_string):
 		self.sample_ID = sample_ID
 		self.unmapped_bam = os.path.join(Samples.raw_bam_dir, self.sample_ID + ".bam")
 		self.read_group_string = read_group_string
 
-		for directory in [Samples.raw_bam_dir, Samples.raw_fastq_dir, Samples.fastq_porechop_dir, Samples.mapped_bam_dir, Samples.clair3_dir, Samples.sniffles_dir, Samples.whatshap_phased_vcf_dir]:
+		for directory in [Samples.raw_bam_dir, Samples.raw_fastq_dir, Samples.fastq_porechop_dir, Samples.mapped_bam_dir, Samples.clair3_dir, Samples.sniffles_dir, Samples.whatshap_phased_vcf_dir, Samples.longphase_phased_vcf_dir]:
 			os.makedirs(directory, exist_ok=True)
 		
 		print(f"Processing Sample {sample_ID}!")
@@ -304,6 +307,54 @@ class Samples:
 		print("WhatsHap phase blocks written to: {}".format(output_blocks_file))
 		print("\n\n")
 
+	def phase_genotypes_longphase(self):
+		print("Phasing Genotypes with LongPhase!")
+
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
+		input_SNV_vcf = os.path.join(Samples.clair3_dir, self.sample_ID, "merge_output.vcf.gz")
+		input_SV_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.sniffles.vcf.gz")
+
+		print("Input BAM: {}".format(input_bam))
+		print("Input SNV VCF: {}".format(input_SNV_vcf))
+		print("Input SV VCF: {}".format(input_SV_vcf))
+
+		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.longphase.haplotag.bam")
+		phased_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz")
+		output_blocks_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
+		output_gtf_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
+
+		phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
+		longphase_phase_cmd = "{longphase} phase -s {input_snv_vcf} --sv {input_sv_vcf} -b {input_bam} -r {reference_genome} -t {threads} -o {phased_prefix} --ont".format(longphase = longphase, input_snv_vcf = input_SNV_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, reference_genome = reference_fasta, threads = max_threads, phased_prefix = phased_vcf_prefix)
+
+		compress_cmd = "bgzip -f {prefix}.vcf".format(prefix=phased_vcf_prefix)
+		index_cmd = "bcftools index {input_file}".format(input_file = phased_vcf)
+		tabix_cmd = "tabix {input_file}".format(input_file = phased_vcf)
+
+		haplotagged_bam_prefix = haplotagged_bam.split(".bam")[0]
+		longphase_haplotag_cmd = "{longphase} haplotag -r {reference_genome} -s {input_snv_vcf} --sv-file {input_sv_vcf} -b {input_bam} -t {threads} -o {prefix}".format(longphase = longphase, reference_genome = reference_fasta, input_snv_vcf = phased_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, threads = max_threads, prefix = haplotagged_bam_prefix)
+
+		whatshap_stats_cmd = "whatshap stats --block-list={block_list_file} --gtf={gtf_file} {input_vcf}".format(block_list_file = output_blocks_file, gtf_file = output_gtf_file, input_vcf = phased_vcf)
+
+		# Log WhatsHap in own output file so it doesn't clog up STDOUT
+		longphase_log = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".longphase.log")
+
+		with open(longphase_log, "w") as log_file:
+			log_file.write("\n==== Running LongPhase Phase ====\n")
+			subprocess.run(longphase_phase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(compress_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(index_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(tabix_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			log_file.write("\n==== Running LongPhase Haplotag ====\n")
+			subprocess.run(longphase_haplotag_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			log_file.write("\n==== Running WhatsHap Stats ====\n")
+			subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+		print("LongPhase phased VCF written to: {}".format(phased_vcf))
+		print("LongPhase haplotagged BAM written to: {}".format(haplotagged_bam))
+		print("LongPhase phase block gtf written to: {}".format(output_gtf_file))
+		print("LongPhase phase blocks written to: {}".format(output_blocks_file))
+		print("\n\n")
+
 def main():
 	# Check that all required tools are installed
 	# check_required_commands()
@@ -318,18 +369,19 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	sample.convert_bam_to_fastq()
-	sample.run_porechop_abi()
-	sample.trim_reads()
-	sample.align_to_reference()
-	sample.mark_duplicates()
+	# sample.convert_bam_to_fastq()
+	# sample.run_porechop_abi()
+	# sample.trim_reads()
+	# sample.align_to_reference()
+	# sample.mark_duplicates()
 
 	chr6_reads = sample.filter_reads()
 
 	if chr6_reads > min_reads_sample:
 		# sample.call_variants()
-		sample.call_structural_variants()
-		sample.phase_genotypes_whatshap()
+		# sample.call_structural_variants()
+		# sample.phase_genotypes_whatshap()
+		sample.phase_genotypes_longphase()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)
