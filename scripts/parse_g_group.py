@@ -45,7 +45,7 @@ def create_g_group_seq_dict():
 		hla_seq_dict[name] = seq
 
 	for gene, g_groups in g_group_allele_dict.items():
-		if gene == "A*":
+		if gene == "B*":
 			# print(f"Parsing Gene {gene}!")
 			for g_group, alleles in g_groups.items():
 				# print(f"Parsing G-Group: {g_group}!")
@@ -54,37 +54,38 @@ def create_g_group_seq_dict():
 				for allele in alleles:
 					allele_name = f"{gene}{allele}"
 					if allele_name in hla_seq_dict:
-						if len(hla_seq_dict[allele_name]) == 1098:
-							allele_seq = hla_seq_dict[allele_name]
-							exon_2_seq.add(allele_seq[hla_a_exon_2])
-							exon_3_seq.add(allele_seq[hla_a_exon_3])
+						#if len(hla_seq_dict[allele_name]) == 1098:
+						allele_seq = hla_seq_dict[allele_name]
+						exon_2_seq.add(allele_seq[hla_a_exon_2])
+						exon_3_seq.add(allele_seq[hla_a_exon_3])
 
-						elif hla_seq_dict[allele_name].startswith("GCT") and hla_seq_dict[allele_name].endswith("CGG"):
-							allele_seq = hla_seq_dict[allele_name]
-							exon_2_seq = add(allele_seq[0:270])
-							exon_3_seq = add(allele_seq[270:546])
+					elif hla_seq_dict[allele_name].startswith("GCT") and hla_seq_dict[allele_name].endswith("CGG"):
+						allele_seq = hla_seq_dict[allele_name]
+						exon_2_seq = add(allele_seq[0:270])
+						exon_3_seq = add(allele_seq[270:546])
 
-						else:
-							print(f"Allele {allele_name}, length: {len(hla_seq_dict[allele_name])}")
-							
-						if len(exon_2_seq) == 1 and len(exon_3_seq) == 1:
-							g_group_seq_dict[g_group] = list(exon_2_seq)[0] + list(exon_3_seq)[0]
+					else:
+						print(f"Allele {allele_name}, length: {len(hla_seq_dict[allele_name])}")
 						
-						else:
-							print(f"Seqs not identical for all alleles in G Group {g_group}!")
-							problem_counter += 1
+					if len(exon_2_seq) == 1 and len(exon_3_seq) == 1:
+						g_group_seq_dict[g_group] = list(exon_2_seq)[0] + list(exon_3_seq)[0]
+					
+					else:
+						print(f"Seqs not identical for all alleles in G Group {g_group}!")
+						problem_counter += 1
 
 	print(problem_counter)
 
 def main():
 	create_g_group_dict()
 	create_g_group_seq_dict()
-	for gene, g_groups in g_group_allele_dict.items():
-		if gene == "A*":
-			# print(gene)
-			for g_group, alleles in g_groups.items():
-				if not g_group in g_group_seq_dict:
-					print(g_group)
+	# for gene, g_groups in g_group_allele_dict.items():
+	# 	if gene == "A*":
+	# 		# print(gene)
+	# 		for g_group, alleles in g_groups.items():
+	# 			if not g_group in g_group_seq_dict:
+	# 				print(g_group)
+	print(g_group_seq_dict)
 
 
 if __name__ == "__main__":

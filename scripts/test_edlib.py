@@ -1,16 +1,16 @@
 import json
 from Bio import SeqIO
-import Levenshtein
+import edlib
 
 reference_file = "/Users/matt/Downloads/hla_nuc.fasta"
 
 # IHW09117 HLA-B Test Case
-query_file = "/Users/matt/Downloads/test.fa"
+# query_file = "/Users/matt/Downloads/test.fa"
 # Gene for Query file (e.g., "A")
 gene = "B"
 
 # All PacBio and ONT Class I haplotypes
-# query_file = "/Users/matt/Desktop/fasta_dict.json"
+query_file = "/Users/matt/Desktop/fasta_dict.json"
 
 class SequenceMatcher:
 
@@ -39,7 +39,13 @@ class SequenceMatcher:
 		distances = []
 
 		for allele_name, reference_sequence in alleles:
-			dist = Levenshtein.distance(query_sequence, reference_sequence)
+			if len(query_sequence) <= len(reference_sequence):
+				dist = edlib.align(query_sequence, reference_sequence, mode="HW", task="path")["editDistance"]
+			elif len(query_sequence) > len(reference_sequence):
+				dist = edlib.align(reference_sequence, query_sequence, mode="HW", task="path")["editDistance"]
+			else:
+				print("Error")
+				sys.exit(1)
 			uncertainty = dist / len(query_sequence)
 			distances.append((allele_name, dist, uncertainty))
 
