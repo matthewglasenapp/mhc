@@ -24,12 +24,13 @@ reference_fasta = "ref/human_hs37d5.fasta"
 tandem_repeat_bed = "ref/human_hs37d5.trf.bed"
 truth_vcf = "/hb/scratch/mglasena/MHC/concordance/GIAB_benchmark/HG002_SV/NIST_SV_v0.6/HG002_SVs_Tier1_v0.6.vcf.gz"
 regions_dir = "regions/"
-#regions_file = "regions/merged_hla_hg19.bed"
-#regions_file = "regions/mhc_3_hg19.bed"
+regions_file = "regions/merged_hla_hg19.bed"
+# regions_file = "regions/mhc_3_hg19.bed"
 #regions_file = "regions/mhc_3_hg19_captured.bed"
-regions_file = "regions/50X_hs37d5.bed"
+# regions_file = "regions/50X_hs37d5.bed"
 fastq_file = "/hb/scratch/mglasena/test_pacbio/processed_data/fastq_rmdup_cutadapt/HG002.dedup.trimmed.fastq.gz"
 HG002_RG_string = r'"@RG\tID:m84039_240622_113450_s1\tSM:HG002"'
+chr6_bed = "chr6_hs37d5.bed"
 
 # hg38 HLA Class III region
 # MCCD1 start (BED): 31528961
@@ -110,6 +111,14 @@ def run_pbsv():
 	subprocess.run(bgzip_cmd, shell=True, check=True)
 	subprocess.run(tabix_cmd, shell=True, check=True)
 
+def run_sniffles():
+	input_bam = "mapped_bam/HG002.dedup.trimmed.hg19.chr6.bam"
+	output_vcf = "pbsv_vcf/HG002.dedup.trimmed.hg19.chr6.vcf.gz"
+
+	sniffles_cmd = "sniffles --allow-overwrite -t {threads} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
+	subprocess.run(sniffles_cmd, shell=True, check=True)
+
+
 def run_truvari():	
 	input_vcf = "pbsv_vcf/HG002.dedup.trimmed.hg19.chr6.vcf.gz"
 
@@ -135,6 +144,7 @@ def main():
 
 	#align_to_reference()
 	#run_pbsv()
+	run_sniffles()
 	run_truvari()
 	run_svanalyzer()
 
