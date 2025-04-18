@@ -381,7 +381,7 @@ class Samples:
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
 		output_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf")
 
-		sniffles_cmd = "sniffles --allow-overwrite -t {threads} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
+		sniffles_cmd = "sniffles --allow-overwrite -t {threads} --reference {reference_genome} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, reference_genome = reference_fasta, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
 		subprocess.run(sniffles_cmd, shell=True, check=True)
 
 	# Genotype tandem repeats with pbtrgt
@@ -548,36 +548,66 @@ class Samples:
 
 		whatshap_stats_cmd = "whatshap stats --block-list={block_list_file} --gtf={gtf_file} {input_vcf}".format(block_list_file = output_blocks_file, gtf_file = output_gtf_file, input_vcf = phased_vcf)
 
-		merged_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased_merged.vcf.gz")
-
-		merge_cmd = "bcftools concat --allow-overlaps -a {snv_vcf} {sv_vcf} | bcftools norm -m -any -f {ref} | bcftools sort -Oz -o {output_vcf} -".format(snv_vcf = phased_vcf, sv_vcf = phased_SV_vcf, ref = reference_fasta, output_vcf = merged_vcf)
-
-		index_merged_cmd = "bcftools index {output_vcf}".format(output_vcf = merged_vcf)
-
 		# Log WhatsHap in own output file so it doesn't clog up STDOUT
 		longphase_log = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".longphase.log")
 
 		with open(longphase_log, "w") as log_file:
 			log_file.write("\n==== Running LongPhase Phase ====\n")
-			# subprocess.run(longphase_phase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-			# subprocess.run(compress_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-			# subprocess.run(index_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-			# subprocess.run(tabix_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-			# subprocess.run(compress_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-			# subprocess.run(index_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-			# subprocess.run(tabix_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(longphase_phase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(compress_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(index_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(tabix_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(compress_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(index_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(tabix_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 			log_file.write("\n==== Running LongPhase Haplotag ====\n")
-			# subprocess.run(longphase_haplotag_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(longphase_haplotag_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 			log_file.write("\n==== Running WhatsHap Stats ====\n")
-			# subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 			log_file.write("\n==== Merging Longphase SNV and SV VCFs! ====\n")
-			subprocess.run(merge_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-			subprocess.run(index_merged_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
 		print("LongPhase phased VCF written to: {}".format(phased_vcf))
 		print("LongPhase haplotagged BAM written to: {}".format(haplotagged_bam))
 		print("LongPhase phase block gtf written to: {}".format(output_gtf_file))
 		print("LongPhase phase blocks written to: {}".format(output_blocks_file))
+		print("\n\n")
+
+	def merge_longphase_vcfs(self):
+		print("Merging SNV and SV VCFs using bcftools...")
+
+		phased_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
+		phased_SV_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased_SV.vcf.gz")
+		merged_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz")
+		reheadered_SV_vcf = phased_SV_vcf.replace(".vcf.gz", ".reheader.vcf.gz")
+
+		header_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".header.txt")
+		merge_log = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".merge.log")
+
+		with open(header_file, "w") as hf:
+			hf.write(f"SAMPLE\t{self.sample_ID}\n")
+
+		reheader_cmd = f"bcftools reheader -s {header_file} {phased_SV_vcf} -o {reheadered_SV_vcf}"
+		index_sv_cmd = f"bcftools index {reheadered_SV_vcf}"
+
+		merge_cmd = (
+			f"bcftools concat --allow-overlaps -a {phased_vcf} {reheadered_SV_vcf} | "
+			f"bcftools norm -m -any -f {reference_fasta} | "
+			f"bcftools sort -Oz -o {merged_vcf} -"
+		)
+		index_merged_cmd = f"bcftools index {merged_vcf}"
+
+		with open(merge_log, "w") as log_file:
+			log_file.write("==== Reheadering SV VCF ====\n")
+			subprocess.run(reheader_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(index_sv_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+			log_file.write("\n==== Merging SNV and SV VCFs ====\n")
+			subprocess.run(merge_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+			log_file.write("\n==== Indexing Merged VCF ====\n")
+			subprocess.run(index_merged_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+		print(f"✅ Merged VCF written to: {merged_vcf}")
 		print("\n\n")
 
 def main():
@@ -608,7 +638,8 @@ def main():
 		# sample.merge_vcfs()
 		# sample.phase_genotypes_hiphase()
 		# sample.phase_genotypes_whatshap()
-		sample.phase_genotypes_longphase()
+		# sample.phase_genotypes_longphase()
+		sample.merge_longphase_vcfs()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)

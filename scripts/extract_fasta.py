@@ -8,14 +8,16 @@ vcf2fasta = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
 reference_genome = "/hb/scratch/mglasena/test_pacbio/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 
 revio_phased_genes = "/hb/scratch/mglasena/test_minimap/phase_results/phased_genes.whatshap.json"
-revio_phased_vcf_dir = "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/"
+revio_phased_vcf_dir = "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_hiphase/"
 promethion_phased_genes = "/hb/scratch/mglasena/delete/phased_genes.promethion.json"
 promethion_phased_vcf_dir = "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_longphase/"
 gff_dir = "/hb/scratch/mglasena/test_vcf2fasta/gff/"
 
-platforms = ["Revio", "PromethION"]
+# platforms = ["Revio", "PromethION"]
+platforms = ["Revio"]
 
-samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
+# samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
+samples = ["HG002"]
 
 #genes_of_interest = ("HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DRB5", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1")
 
@@ -95,14 +97,15 @@ def sort_cds(gff_file):
 
 def filter_vcf(sample, platform):
 	if platform == "Revio":
-		phased_vcf = os.path.join(revio_phased_vcf_dir, sample + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
-
+		#phased_vcf = os.path.join(revio_phased_vcf_dir, sample + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
+		phased_vcf = os.path.join(revio_phased_vcf_dir, sample + ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz")
 	elif platform == "PromethION":
 		phased_vcf = os.path.join(promethion_phased_vcf_dir, sample + ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz")
 
 	pass_only_vcf = os.path.join(filtered_vcf_dir, f"{platform}_{sample}_PASS.vcf.gz")
 	filtered_vcf = os.path.join(filtered_vcf_dir, f"{platform}_{sample}_filtered.vcf.gz")
 
+	# --include 'FMT/GQ>=20' -f PASS 
 	get_pass_vcf_cmd = "bcftools view -f PASS {input_vcf} -Oz -o {output_vcf}".format(input_vcf = phased_vcf, output_vcf = pass_only_vcf)
 	
 	index_cmd = "bcftools index {input_vcf}".format(input_vcf = pass_only_vcf)
