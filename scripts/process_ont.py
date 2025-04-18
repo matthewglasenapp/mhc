@@ -336,7 +336,7 @@ class Samples:
 		whatshap_stats_cmd = "whatshap stats --block-list={block_list_file} --gtf={gtf_file} {input_vcf}".format(block_list_file = output_blocks_file, gtf_file = output_gtf_file, input_vcf = phased_vcf)
 
 		# Log WhatsHap in own output file so it doesn't clog up STDOUT
-		longphase_log = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".longphase.log")
+		longphase_log = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".longphase.log")
 
 		with open(longphase_log, "w") as log_file:
 			log_file.write("\n==== Running LongPhase Phase ====\n")

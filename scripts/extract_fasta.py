@@ -10,7 +10,7 @@ reference_genome = "/hb/scratch/mglasena/test_pacbio/reference/GCA_000001405.15_
 revio_phased_genes = "/hb/scratch/mglasena/test_minimap/phase_results/phased_genes.whatshap.json"
 revio_phased_vcf_dir = "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/"
 promethion_phased_genes = "/hb/scratch/mglasena/delete/phased_genes.promethion.json"
-promethion_phased_vcf_dir = "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap/"
+promethion_phased_vcf_dir = "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_longphase/"
 gff_dir = "/hb/scratch/mglasena/test_vcf2fasta/gff/"
 
 platforms = ["Revio", "PromethION"]
@@ -21,8 +21,8 @@ samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", 
 
 genes_of_interest = ["HLA-A", "HLA-B", "HLA-C"]
 
-# feature = "gene"
-feature = "CDS"
+feature = "gene"
+# feature = "CDS"
 
 input_dir = os.getcwd()
 
@@ -98,7 +98,7 @@ def filter_vcf(sample, platform):
 		phased_vcf = os.path.join(revio_phased_vcf_dir, sample + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
 
 	elif platform == "PromethION":
-		phased_vcf = os.path.join(promethion_phased_vcf_dir, sample + ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz")
+		phased_vcf = os.path.join(promethion_phased_vcf_dir, sample + ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz")
 
 	pass_only_vcf = os.path.join(filtered_vcf_dir, f"{platform}_{sample}_PASS.vcf.gz")
 	filtered_vcf = os.path.join(filtered_vcf_dir, f"{platform}_{sample}_filtered.vcf.gz")

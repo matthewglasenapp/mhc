@@ -55,6 +55,8 @@ deepvariant_sif = os.path.join(input_dir, "deepvariant_sif/deepvariant.sif")
 # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
 tandem_repeat_bed = os.path.join(input_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
 
+chr6_bed = os.path.join(input_dir, "chr6.bed")
+
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210
 pbtrgt_repeat_file = os.path.join(input_dir, "repeats_bed/polymorphic_repeats.hg38.bed")
@@ -111,6 +113,8 @@ min_reads_sample = 100
 me = "AGATGTGTATAAGAGACAG"
 me_rc = "CTGTCTCTTATACACATCT"
 
+longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
+
 # Ensure all required tools are installed and executable
 def check_required_commands():    
 	print("Checking the installation status of the required bioinformatics tools!")
@@ -128,6 +132,7 @@ def check_required_commands():
 		"pigz",
 		"samtools",
 		"singularity",
+		"sniffles",
 		"tabix",
 		"trgt",
 		"whatshap"
@@ -151,17 +156,19 @@ class Samples:
 	mapped_bam_dir = os.path.join(output_dir, "mapped_bam")
 	deepvariant_dir = os.path.join(output_dir, "deepvariant_vcf")
 	pbsv_dir = os.path.join(output_dir, "pbsv_vcf")
+	sniffles_dir = os.path.join(output_dir, "sniffles")
 	pbtrgt_dir = os.path.join(output_dir, "pbtrgt_vcf")
 	merged_vcf_dir = os.path.join(output_dir, "merged_vcf")
 	hiphase_phased_vcf_dir = os.path.join(output_dir, "phased_vcf_hiphase")
 	whatshap_phased_vcf_dir = os.path.join(output_dir, "phased_vcf_whatshap")
+	longphase_phased_vcf_dir = os.path.join(output_dir, "phased_vcf_longphase")
 
 	def __init__(self, sample_ID, read_group_string):
 		self.sample_ID = sample_ID
 		self.unmapped_bam = os.path.join(input_dir, "raw_hifi_reads", self.sample_ID + ".hifi_reads.bam")
 		self.read_group_string = read_group_string
 
-		for directory in [Samples.fastq_raw_dir, Samples.fastq_rmdup_dir, Samples.fastq_rmdup_cutadapt_dir, Samples.mapped_bam_dir, Samples.deepvariant_dir, Samples.pbsv_dir, Samples.pbtrgt_dir, Samples.merged_vcf_dir, Samples.hiphase_phased_vcf_dir, Samples.whatshap_phased_vcf_dir]:
+		for directory in [Samples.fastq_raw_dir, Samples.fastq_rmdup_dir, Samples.fastq_rmdup_cutadapt_dir, Samples.mapped_bam_dir, Samples.deepvariant_dir, Samples.pbsv_dir, Samples.sniffles_dir, Samples.pbtrgt_dir, Samples.merged_vcf_dir, Samples.hiphase_phased_vcf_dir, Samples.whatshap_phased_vcf_dir, Samples.longphase_phased_vcf_dir]:
 			os.makedirs(directory, exist_ok=True)
 		
 		print(f"Processing Sample {sample_ID}!")
@@ -368,6 +375,15 @@ class Samples:
 		print("SV VCF written to: {}".format(output_vcf))
 		print("\n\n")
 
+	def call_structural_variants_sniffles(self):
+		print("Calling structural variants with Sniffles!")
+		
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+		output_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf")
+
+		sniffles_cmd = "sniffles --allow-overwrite -t {threads} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
+		subprocess.run(sniffles_cmd, shell=True, check=True)
+
 	# Genotype tandem repeats with pbtrgt
 	def genotype_tandem_repeats(self):
 		print("Genotyping tandem repeats with pbtrgt!")
@@ -496,6 +512,74 @@ class Samples:
 		print("WhatsHap phase blocks written to: {}".format(output_blocks_file))
 		print("\n\n")
 
+	def phase_genotypes_longphase(self):
+		print("Phasing Genotypes with LongPhase!")
+
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+		input_SNV_vcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SNV.vcf.gz")
+		input_SV_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf")
+
+		print("Input BAM: {}".format(input_bam))
+		print("Input SNV VCF: {}".format(input_SNV_vcf))
+		print("Input SV VCF: {}".format(input_SV_vcf))
+
+		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.longphase.haplotag.bam")
+		phased_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
+		output_blocks_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
+		output_gtf_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
+
+		phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
+		longphase_phase_cmd = "{longphase} phase -s {input_snv_vcf} --sv {input_sv_vcf} -b {input_bam} -r {reference_genome} -t {threads} -o {phased_prefix} --ont".format(longphase = longphase, input_snv_vcf = input_SNV_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, reference_genome = reference_fasta, threads = max_threads, phased_prefix = phased_vcf_prefix)
+
+		# SNV
+		compress_cmd = "bgzip -f {prefix}.vcf".format(prefix=phased_vcf_prefix)
+		index_cmd = "bcftools index {input_file}".format(input_file = phased_vcf)
+		tabix_cmd = "tabix {input_file}".format(input_file = phased_vcf)
+
+		# SV
+		SV_prefix = phased_vcf_prefix + "_SV"
+		phased_SV_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased_SV.vcf.gz")
+		compress_SV_cmd = "bgzip -f {prefix}.vcf".format(prefix=SV_prefix)
+		index_SV_cmd = "bcftools index {input_file}".format(input_file = phased_SV_vcf)
+		tabix_SV_cmd = "tabix {input_file}".format(input_file = phased_SV_vcf)
+
+		haplotagged_bam_prefix = haplotagged_bam.split(".bam")[0]
+		longphase_haplotag_cmd = "{longphase} haplotag -r {reference_genome} -s {input_snv_vcf} --sv-file {input_sv_vcf} -b {input_bam} -t {threads} -o {prefix}".format(longphase = longphase, reference_genome = reference_fasta, input_snv_vcf = phased_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, threads = max_threads, prefix = haplotagged_bam_prefix)
+
+		whatshap_stats_cmd = "whatshap stats --block-list={block_list_file} --gtf={gtf_file} {input_vcf}".format(block_list_file = output_blocks_file, gtf_file = output_gtf_file, input_vcf = phased_vcf)
+
+		merged_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased_merged.vcf.gz")
+
+		merge_cmd = "bcftools concat --allow-overlaps -a {snv_vcf} {sv_vcf} | bcftools norm -m -any -f {ref} | bcftools sort -Oz -o {output_vcf} -".format(snv_vcf = phased_vcf, sv_vcf = phased_SV_vcf, ref = reference_fasta, output_vcf = merged_vcf)
+
+		index_merged_cmd = "bcftools index {output_vcf}".format(output_vcf = merged_vcf)
+
+		# Log WhatsHap in own output file so it doesn't clog up STDOUT
+		longphase_log = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".longphase.log")
+
+		with open(longphase_log, "w") as log_file:
+			log_file.write("\n==== Running LongPhase Phase ====\n")
+			# subprocess.run(longphase_phase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			# subprocess.run(compress_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			# subprocess.run(index_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			# subprocess.run(tabix_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			# subprocess.run(compress_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			# subprocess.run(index_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			# subprocess.run(tabix_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			log_file.write("\n==== Running LongPhase Haplotag ====\n")
+			# subprocess.run(longphase_haplotag_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			log_file.write("\n==== Running WhatsHap Stats ====\n")
+			# subprocess.run(whatshap_stats_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			log_file.write("\n==== Merging Longphase SNV and SV VCFs! ====\n")
+			subprocess.run(merge_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(index_merged_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+		print("LongPhase phased VCF written to: {}".format(phased_vcf))
+		print("LongPhase haplotagged BAM written to: {}".format(haplotagged_bam))
+		print("LongPhase phase block gtf written to: {}".format(output_gtf_file))
+		print("LongPhase phase blocks written to: {}".format(output_blocks_file))
+		print("\n\n")
+
 def main():
 	# Check that all required tools are installed
 	check_required_commands()
@@ -507,22 +591,24 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	sample.convert_bam_to_fastq()
-	sample.mark_duplicates()
-	#sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-	sample.trim_adapters()
-	#sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-	sample.align_to_reference()
+	# sample.convert_bam_to_fastq()
+	# sample.mark_duplicates()
+	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
+	# sample.trim_adapters()
+	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
+	# sample.align_to_reference()
 	
 	chr6_reads = sample.filter_reads()
 
 	if chr6_reads > min_reads_sample:
-		sample.call_variants()
-		sample.call_structural_variants()
-		sample.genotype_tandem_repeats()
-		sample.merge_vcfs()
-		sample.phase_genotypes_hiphase()
-		sample.phase_genotypes_whatshap()
+		# sample.call_variants()
+		# sample.call_structural_variants()
+		# sample.call_structural_variants_sniffles()
+		# sample.genotype_tandem_repeats()
+		# sample.merge_vcfs()
+		# sample.phase_genotypes_hiphase()
+		# sample.phase_genotypes_whatshap()
+		sample.phase_genotypes_longphase()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)
