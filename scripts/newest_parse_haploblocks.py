@@ -4,20 +4,22 @@ import json
 import pysam
 from joblib import Parallel, delayed
 
-phasers = ["longphase", "hiphase", "whatshap", "promethion"]
+#phasers = ["longphase", "hiphase", "whatshap", "promethion"]
+phasers = ["longphase", "hiphase", "whatshap"]
+
 
 # Config for each tool
 config = {
 	"hiphase": {
-		"vcf_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_hiphase/",
-		"haploblock_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_hiphase/",
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_hiphase/",
+		"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_hiphase/",
 		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
 		"haploblock_suffix": ".phased.blocks.txt",
 		"haploblock_parse": lambda fields: ("chr6", int(fields[4]) - 1, int(fields[5]))
 	},
 	"whatshap": {
-		"vcf_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/",
-		"haploblock_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/",
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_whatshap/",
+		"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_whatshap/",
 		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
 		"haploblock_suffix": ".phased.haploblocks.txt",
 		"haploblock_parse": lambda fields: (fields[1], int(fields[3]) - 1, int(fields[4]))
@@ -34,9 +36,9 @@ config = {
 		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
 	},
 	"longphase": {
-		"vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_longphase",
-		"haploblock_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_longphase",
-		"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz",
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
+		"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
 		"haploblock_suffix": ".phased.haploblocks.txt",
 		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
 		}
