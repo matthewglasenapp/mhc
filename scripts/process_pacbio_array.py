@@ -32,7 +32,9 @@ Script Details:
 
 	4. The repeat bed files required for pbsv (human_GRCh38_no_alt_analysis_set.trf.bed) and pbtrgt (polymorphic_repeats.hg38.bed) are contained within /current_working_dir/repeats_bed/
 
-	5. The default is set to use 6 threads. Change the max_threads variable to customize
+	5. There is a bed file of the extended MHC called chr6.bed in /current_working_dir/reference.
+
+	6. The default is set to use 6 threads. Change the max_threads variable to customize
 
 """
 
@@ -55,7 +57,7 @@ deepvariant_sif = os.path.join(input_dir, "deepvariant_sif/deepvariant.sif")
 # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
 tandem_repeat_bed = os.path.join(input_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
 
-chr6_bed = os.path.join(input_dir, "chr6.bed")
+chr6_bed = os.path.join(input_dir, "reference/chr6.bed")
 
 # GRCh38 tandem repeat definition file for pbtrgt
 # Downloaded from https://zenodo.org/records/8329210
@@ -241,21 +243,20 @@ class Samples:
 
 	# Align to GRCh38 reference genome with pbmm2
 	def align_to_reference(self):
-		#print("Aligning reads to GRCh38 reference genome with pbmm2!")
 		print("Aligning reads to GRCh38 reference genome with minimap2!")
 		
 		input_fastq = os.path.join(Samples.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
 
-		#print("pbmm2 input file: {}".format(input_fastq))
 		print("minimap2 input file: {}".format(input_fastq))
 		
 		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
 
-		#pbmm2_cmd = "pbmm2 align -j {threads} {reference_genome} {input_file} {output_file} --sort --log-level INFO --unmapped --bam-index BAI --rg '{rg_string}'".format(threads = max_threads, reference_genome = reference_fasta, input_file = input_fastq, output_file = output_bam, rg_string = self.read_group_string)
+		# Deprecate pbmm2. Moving forward with minimap2 for ease of comparison with ONT data.
+		# print("Aligning reads to GRCh38 reference genome with pbmm2!")
+		# print("pbmm2 input file: {}".format(input_fastq))
+		# pbmm2_cmd = "pbmm2 align -j {threads} {reference_genome} {input_file} {output_file} --sort --log-level INFO --unmapped --bam-index BAI --rg '{rg_string}'".format(threads = max_threads, reference_genome = reference_fasta, input_file = input_fastq, output_file = output_bam, rg_string = self.read_group_string)
+		# subprocess.run(pbmm2_cmd, shell=True, check=True)
 
-		#subprocess.run(pbmm2_cmd, shell=True, check=True)
-
-		# Use minimap2 instead of pbmm2
 		minimap_threads = int(max_threads * 2 / 3)
 		samtools_threads = max_threads - minimap_threads
 		minimap_rg_string = "'{}'".format(self.read_group_string.replace("\t", "\\t"))
@@ -280,7 +281,7 @@ class Samples:
 
 		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
 
-		# Exclude secondary and supplementary alignments
+		# Extract chromosome 6 and exclude secondary and supplementary alignments
 		samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = max_threads, input_file = input_bam, output_file = output_bam)
 		
 		subprocess.run(samtools_cmd, shell=True, check=True)
@@ -344,7 +345,7 @@ class Samples:
 		print("\n\n")
 
 	# Run pbsv to call structural variants (SV)
-	def call_structural_variants(self):
+	def call_structural_variants_pbsv(self):
 		print("Calling structural variants with pbsv!")
 
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
@@ -372,7 +373,7 @@ class Samples:
 		subprocess.run(compress_cmd, shell=True, check=True)
 		subprocess.run(index_vcf_cmd, shell=True, check=True)
 
-		print("SV VCF written to: {}".format(output_vcf))
+		print("pbsv SV VCF written to: {}".format(output_vcf))
 		print("\n\n")
 
 	def call_structural_variants_sniffles(self):
@@ -383,6 +384,9 @@ class Samples:
 
 		sniffles_cmd = "sniffles --allow-overwrite -t {threads} --reference {reference_genome} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, reference_genome = reference_fasta, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
 		subprocess.run(sniffles_cmd, shell=True, check=True)
+
+		print("Sniffles SV VCF written to: {}".format(output_vcf))
+		print("\n\n")
 
 	# Genotype tandem repeats with pbtrgt
 	def genotype_tandem_repeats(self):
@@ -410,10 +414,10 @@ class Samples:
 		
 		subprocess.run(index_cmd, shell=True, check=True)
 
-		print("TR VCF written to {}".format(Samples.pbtrgt_dir + output_prefix + ".vcf.gz"))
+		print("TR VCF written to {}".format(os.path.join(Samples.pbtrgt_dir, output_prefix + ".vcf.gz")))
 		print("\n\n")
 
-	# Merge SNV, tandem repeat, and structural variant vcfs with bcftools concat
+	# Merge SNV (DeepVariant), tandem repeat (pbtrgt), and structural variant (pbsv) vcfs with bcftools concat for use with HiPhase
 	def merge_vcfs(self):
 		print("Merging DeepVariant, pbsv, and pbtrgt VCF files!")
 
@@ -529,14 +533,14 @@ class Samples:
 		output_gtf_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
 
 		phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
-		longphase_phase_cmd = "{longphase} phase -s {input_snv_vcf} --sv {input_sv_vcf} -b {input_bam} -r {reference_genome} -t {threads} -o {phased_prefix} --ont".format(longphase = longphase, input_snv_vcf = input_SNV_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, reference_genome = reference_fasta, threads = max_threads, phased_prefix = phased_vcf_prefix)
+		longphase_phase_cmd = "{longphase} phase -s {input_snv_vcf} --sv {input_sv_vcf} -b {input_bam} -r {reference_genome} -t {threads} -o {phased_prefix} --pb".format(longphase = longphase, input_snv_vcf = input_SNV_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, reference_genome = reference_fasta, threads = max_threads, phased_prefix = phased_vcf_prefix)
 
-		# SNV
+		# Compress and index SNV VCF
 		compress_cmd = "bgzip -f {prefix}.vcf".format(prefix=phased_vcf_prefix)
 		index_cmd = "bcftools index {input_file}".format(input_file = phased_vcf)
 		tabix_cmd = "tabix {input_file}".format(input_file = phased_vcf)
 
-		# SV
+		# Compress and index SV VCF
 		SV_prefix = phased_vcf_prefix + "_SV"
 		phased_SV_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased_SV.vcf.gz")
 		compress_SV_cmd = "bgzip -f {prefix}.vcf".format(prefix=SV_prefix)
@@ -607,7 +611,7 @@ class Samples:
 			log_file.write("\n==== Indexing Merged VCF ====\n")
 			subprocess.run(index_merged_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 
-		print(f"✅ Merged VCF written to: {merged_vcf}")
+		print(f" Merged VCF written to: {merged_vcf}")
 		print("\n\n")
 
 def main():
@@ -632,13 +636,13 @@ def main():
 
 	if chr6_reads > min_reads_sample:
 		# sample.call_variants()
-		# sample.call_structural_variants()
+		# sample.call_structural_variants_pbsv()
 		# sample.call_structural_variants_sniffles()
 		# sample.genotype_tandem_repeats()
 		# sample.merge_vcfs()
 		# sample.phase_genotypes_hiphase()
 		# sample.phase_genotypes_whatshap()
-		# sample.phase_genotypes_longphase()
+		sample.phase_genotypes_longphase()
 		sample.merge_longphase_vcfs()
 		end_time = time.time()
 		elapsed_time = end_time - start_time

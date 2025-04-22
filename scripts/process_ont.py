@@ -16,7 +16,7 @@ os.makedirs(output_dir, exist_ok=True)
 # Use reference fasta with no alternate contigs.
 reference_fasta = os.path.join(input_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
 
-tandem_repeat_bed = os.path.join(input_dir, "human_GRCh38_no_alt_analysis_set.trf.bed")
+tandem_repeat_bed = os.path.join(input_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
 chr6_bed = os.path.join(input_dir, "chr6.bed")
 
 # Set mapped chr6 reads threshold at which variant calling should not proceed
@@ -73,6 +73,7 @@ sample_dict = {
 }
 
 longphase = "/hb/home/mglasena/software/longphase/longphase_linux-x64"
+prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
 
 # Ensure all required tools are installed and executable
 def check_required_commands():    
@@ -86,7 +87,7 @@ def check_required_commands():
 		"gatk",
 		"minimap2",
 		"pigz",
-		"porechop_abi",
+		"prowler_abi",
 		"samtools",
 		"sniffles",
 		"tabix",
@@ -120,7 +121,7 @@ def rename_demux_bams():
 class Samples:
 	raw_bam_dir = os.path.join(output_dir, "raw_bam")
 	raw_fastq_dir = os.path.join(output_dir, "raw_fastq")
-	fastq_porechop_dir = os.path.join(output_dir, "fastq_porechop")
+	fastq_prowler_dir = os.path.join(output_dir, "fastq_prowler")
 	mapped_bam_dir = os.path.join(output_dir, "mapped_bam")
 	clair3_dir = os.path.join(output_dir, "clair3_vcf")
 	sniffles_dir = os.path.join(output_dir, "sniffles")
@@ -132,7 +133,7 @@ class Samples:
 		self.unmapped_bam = os.path.join(Samples.raw_bam_dir, self.sample_ID + ".bam")
 		self.read_group_string = read_group_string
 
-		for directory in [Samples.raw_bam_dir, Samples.raw_fastq_dir, Samples.fastq_porechop_dir, Samples.mapped_bam_dir, Samples.clair3_dir, Samples.sniffles_dir, Samples.whatshap_phased_vcf_dir, Samples.longphase_phased_vcf_dir]:
+		for directory in [Samples.raw_bam_dir, Samples.raw_fastq_dir, Samples.fastq_prowler_dir, Samples.mapped_bam_dir, Samples.clair3_dir, Samples.sniffles_dir, Samples.whatshap_phased_vcf_dir, Samples.longphase_phased_vcf_dir]:
 			os.makedirs(directory, exist_ok=True)
 		
 		print(f"Processing Sample {sample_ID}!")
@@ -149,44 +150,43 @@ class Samples:
 		
 		subprocess.run(gatk_SamToFastq_cmd, shell=True, check=True)
 
-	def run_porechop_abi(self):
-		print("Removing adapters and barcodes with porechop_abi!")
+	def run_prowler_abi(self):
+		print("Removing adapters and barcodes with prowler_abi!")
 		
 		input_fastq = os.path.join(Samples.raw_fastq_dir, self.sample_ID + ".fastq.gz")
 		
-		print("porechop_abi input file: {}".format(input_fastq))
+		print("prowler_abi input file: {}".format(input_fastq))
 
-		porechop_threads = 4
+		prowler_threads = 4
 
-		output_fastq = os.path.join(Samples.fastq_porechop_dir, self.sample_ID + ".porechop.fastq")
+		output_fastq = os.path.join(Samples.fastq_prowler_dir, self.sample_ID + ".prowler.fastq")
 		
-		porechop_cmd = "porechop_abi --ab_initio -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = porechop_threads, output_file = output_fastq)
+		prowler_cmd = "prowler_abi --ab_initio -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = prowler_threads, output_file = output_fastq)
 
-		subprocess.run(porechop_cmd, shell=True, check=True)
+		subprocess.run(prowler_cmd, shell=True, check=True)
 
 	def trim_reads(self):
 		print("Trimiming reads with ProwlerTrimmer!")
-
-		prowler_trimmer = "/hb/home/mglasena/software/ProwlerTrimmer/TrimmerLarge.py"
-		input_fastq_dir = Samples.fastq_porechop_dir + "/"
-		input_fastq_file = self.sample_ID + ".porechop.fastq"
+		
+		input_fastq_dir = Samples.fastq_prowler_dir + "/"
+		input_fastq_file = self.sample_ID + ".prowler.fastq"
 
 		prowler_trimmer_cmd = 'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'.format(prowler_trimmer = prowler_trimmer, input_dir = input_fastq_dir, input_file = input_fastq_file, output_dir = input_fastq_dir)
 
 		subprocess.run(prowler_trimmer_cmd, shell=True, check=True)
 
-		trimmed_fastq = os.path.join(Samples.fastq_porechop_dir, self.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq")
+		trimmed_fastq = os.path.join(Samples.fastq_prowler_dir, self.sample_ID + ".prowlerTrimLT-U0-D20W100L100R0.fastq")
 		pigz_cmd = "pigz -f -p {threads} {input_file}".format(threads = max_threads, input_file = trimmed_fastq)
 		subprocess.run(pigz_cmd, shell=True, check=True)
 
 	def align_to_reference(self):
 		print("Aligning reads to GRCh38 reference genome with minimap2!")
 		
-		input_fastq = os.path.join(Samples.fastq_porechop_dir, self.sample_ID + ".porechopTrimLT-U0-D20W100L100R0.fastq.gz")
+		input_fastq = os.path.join(Samples.fastq_prowler_dir, self.sample_ID + ".prowlerTrimLT-U0-D20W100L100R0.fastq.gz")
 
 		print("minimap2 input file: {}".format(input_fastq))
 		
-		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.bam")
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.bam")
 
 		# Use minimap2 instead of pbmm2
 		minimap_threads = int(max_threads * 2 / 3)
@@ -204,9 +204,9 @@ class Samples:
 		print("\n\n")
 
 	def mark_duplicates(self):
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.bam")
-		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.bam")
-		metrics_file = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.metrics.txt")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.bam")
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.mrkdup.bam")
+		metrics_file = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.mrkdup.metrics.txt")
 		temp_dir = os.path.join(output_dir, "mark_duplicates")
 		os.makedirs(temp_dir, exist_ok=True)
 		
@@ -217,13 +217,13 @@ class Samples:
 	def filter_reads(self):
 		print("Excluding BAM records that don't map to chromosome 6!")
 		
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.mrkdup.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.mrkdup.bam")
 
 		print("Samtools input file: {}".format(input_bam))
 
-		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.bam")
 
-		# Exclude duplicates and secondary and supplementary alignments
+		# Extract chromosome 6 and exclude duplicates, secondary, and supplementary alignments
 		samtools_cmd = "samtools view -@ {threads} -F 3328 -b {input_file} chr6 > '{output_file}'".format(threads = max_threads, input_file = input_bam, output_file = output_bam)
 		
 		subprocess.run(samtools_cmd, shell=True, check=True)
@@ -245,7 +245,7 @@ class Samples:
 	def call_variants(self):
 		print("Calling SNVs and small INDELS with Clair3!")
 
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.bam")
 		output_dir = os.path.join(Samples.clair3_dir, self.sample_ID)
 		os.makedirs(output_dir, exist_ok=True)
 
@@ -259,8 +259,8 @@ class Samples:
 	def call_structural_variants(self):
 		print("Calling structural variants with Sniffles!")
 		
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
-		output_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.sniffles.vcf.gz")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.bam")
+		output_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.sniffles.vcf.gz")
 
 		sniffles_cmd = "sniffles --allow-overwrite -t {threads} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
 		subprocess.run(sniffles_cmd, shell=True, check=True)
@@ -268,14 +268,14 @@ class Samples:
 	def phase_genotypes_whatshap(self):
 		print("Phasing Genotypes with WhatsHap!")
 
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.bam")
 		input_vcf = os.path.join(Samples.clair3_dir, self.sample_ID, "merge_output.vcf.gz")
 
 		print("Input BAM: {}".format(input_bam))
 		print("Input VCF: {}".format(input_vcf))
 
-		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.whatshap.haplotag.bam")
-		phased_vcf = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz")
+		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.whatshap.haplotag.bam")
+		phased_vcf = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.phased.vcf.gz")
 		output_blocks_file = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
 		output_gtf_file = os.path.join(Samples.whatshap_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
 
@@ -310,25 +310,33 @@ class Samples:
 	def phase_genotypes_longphase(self):
 		print("Phasing Genotypes with LongPhase!")
 
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.bam")
 		input_SNV_vcf = os.path.join(Samples.clair3_dir, self.sample_ID, "merge_output.vcf.gz")
-		input_SV_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.sniffles.vcf.gz")
+		input_SV_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.sniffles.vcf.gz")
 
 		print("Input BAM: {}".format(input_bam))
 		print("Input SNV VCF: {}".format(input_SNV_vcf))
 		print("Input SV VCF: {}".format(input_SV_vcf))
 
-		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.longphase.haplotag.bam")
-		phased_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz")
+		haplotagged_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.longphase.haplotag.bam")
+		phased_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.longphase.vcf.gz")
 		output_blocks_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.txt")
 		output_gtf_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".phased.haploblocks.gtf")
 
 		phased_vcf_prefix = phased_vcf.split(".vcf.gz")[0]
 		longphase_phase_cmd = "{longphase} phase -s {input_snv_vcf} --sv {input_sv_vcf} -b {input_bam} -r {reference_genome} -t {threads} -o {phased_prefix} --ont".format(longphase = longphase, input_snv_vcf = input_SNV_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, reference_genome = reference_fasta, threads = max_threads, phased_prefix = phased_vcf_prefix)
 
+		# Compress and index SNV VCF
 		compress_cmd = "bgzip -f {prefix}.vcf".format(prefix=phased_vcf_prefix)
 		index_cmd = "bcftools index {input_file}".format(input_file = phased_vcf)
 		tabix_cmd = "tabix {input_file}".format(input_file = phased_vcf)
+
+		# Compress and index SV VCF
+		SV_prefix = phased_vcf_prefix + "_SV"
+		phased_SV_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.longphase_SV.vcf.gz")
+		compress_SV_cmd = "bgzip -f {prefix}.vcf".format(prefix=SV_prefix)
+		index_SV_cmd = "bcftools index {input_file}".format(input_file = phased_SV_vcf)
+		tabix_SV_cmd = "tabix {input_file}".format(input_file = phased_SV_vcf)
 
 		haplotagged_bam_prefix = haplotagged_bam.split(".bam")[0]
 		longphase_haplotag_cmd = "{longphase} haplotag -r {reference_genome} -s {input_snv_vcf} --sv-file {input_sv_vcf} -b {input_bam} -t {threads} -o {prefix}".format(longphase = longphase, reference_genome = reference_fasta, input_snv_vcf = phased_vcf, input_sv_vcf = input_SV_vcf, input_bam = input_bam, threads = max_threads, prefix = haplotagged_bam_prefix)
@@ -344,6 +352,9 @@ class Samples:
 			subprocess.run(compress_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 			subprocess.run(index_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 			subprocess.run(tabix_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(compress_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(index_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(tabix_SV_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 			log_file.write("\n==== Running LongPhase Haplotag ====\n")
 			subprocess.run(longphase_haplotag_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
 			log_file.write("\n==== Running WhatsHap Stats ====\n")
@@ -353,6 +364,44 @@ class Samples:
 		print("LongPhase haplotagged BAM written to: {}".format(haplotagged_bam))
 		print("LongPhase phase block gtf written to: {}".format(output_gtf_file))
 		print("LongPhase phase blocks written to: {}".format(output_blocks_file))
+		print("\n\n")
+
+	def merge_longphase_vcfs(self):
+		print("Merging longphase SNV and SV VCFs using bcftools...")
+
+		phased_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.longphase.vcf.gz")
+		phased_SV_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.longphase_SV.vcf.gz")
+		merged_vcf = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz")
+		reheadered_SV_vcf = phased_SV_vcf.replace(".vcf.gz", ".reheader.vcf.gz")
+
+		header_file = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".header.txt")
+		merge_log = os.path.join(Samples.longphase_phased_vcf_dir, self.sample_ID + ".merge.log")
+
+		with open(header_file, "w") as hf:
+			hf.write(f"SAMPLE\t{self.sample_ID}\n")
+
+		reheader_cmd = f"bcftools reheader -s {header_file} {phased_SV_vcf} -o {reheadered_SV_vcf}"
+		index_sv_cmd = f"bcftools index {reheadered_SV_vcf}"
+
+		merge_cmd = (
+			f"bcftools concat --allow-overlaps -a {phased_vcf} {reheadered_SV_vcf} | "
+			f"bcftools norm -m -any -f {reference_fasta} | "
+			f"bcftools sort -Oz -o {merged_vcf} -"
+		)
+		index_merged_cmd = f"bcftools index {merged_vcf}"
+
+		with open(merge_log, "w") as log_file:
+			log_file.write("==== Reheadering SV VCF ====\n")
+			subprocess.run(reheader_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+			subprocess.run(index_sv_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+			log_file.write("\n==== Merging SNV and SV VCFs ====\n")
+			subprocess.run(merge_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+			log_file.write("\n==== Indexing Merged VCF ====\n")
+			subprocess.run(index_merged_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+		print(f" Merged VCF written to: {merged_vcf}")
 		print("\n\n")
 
 def main():
@@ -369,27 +418,27 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	# sample.convert_bam_to_fastq()
-	# sample.run_porechop_abi()
-	# sample.trim_reads()
-	# sample.align_to_reference()
-	# sample.mark_duplicates()
+	sample.convert_bam_to_fastq()
+	sample.run_prowler_abi()
+	sample.trim_reads()
+	sample.align_to_reference()
+	sample.mark_duplicates()
 
-	chr6_reads = sample.filter_reads()
+	# chr6_reads = sample.filter_reads()
 
-	if chr6_reads > min_reads_sample:
+	# if chr6_reads > min_reads_sample:
 		# sample.call_variants()
 		# sample.call_structural_variants()
 		# sample.phase_genotypes_whatshap()
-		sample.phase_genotypes_longphase()
-		end_time = time.time()
-		elapsed_time = end_time - start_time
-		minutes, seconds = divmod(elapsed_time,60)
-		print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+	# 	sample.phase_genotypes_longphase()
+	# 	end_time = time.time()
+	# 	elapsed_time = end_time - start_time
+	# 	minutes, seconds = divmod(elapsed_time,60)
+	# 	print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
 
-	else:
-		print("Insufficient reads for variant calling")
-		print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
+	# else:
+	# 	print("Insufficient reads for variant calling")
+	# 	print("Sample {sample_id} had {num_reads} reads!".format(sample_id = sample_ID, num_reads = chr6_reads))
 
 if __name__ == "__main__":
 	main()
