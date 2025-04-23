@@ -5,9 +5,9 @@ library(dplyr)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/phase_heat_map/")
 
 # Load heatmap data
-#data <- read.csv("phase_map.hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
+data <- read.csv("phase_map.hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
 #data <- read.csv("phase_map.whatshap.csv", header = TRUE, stringsAsFactors = FALSE)
-data <- read.csv("phase_map.longphase.csv", header = TRUE, stringsAsFactors = FALSE)
+#data <- read.csv("phase_map.longphase.csv", header = TRUE, stringsAsFactors = FALSE)
 colnames(data) <- gsub("\\.", "-", colnames(data))  # Replace dots with dashes
 
 # Convert samples and genes into factors to preserve order
@@ -25,15 +25,29 @@ df_long$sample <- factor(df_long$sample, levels = sample_order)
 df_long$Gene <- factor(df_long$Gene, levels = gene_order)
 
 # Load incomplete.csv and format labels
-#incomplete <- read.csv("incomplete.csv", header = TRUE, stringsAsFactors = FALSE)
-#incomplete$label <- paste0(incomplete$num_haploblocks, " (", incomplete$prop_phased, ")")
+incomplete <- read.csv("incomplete.hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
+incomplete$label <- paste0(incomplete$num_haploblocks, " (", incomplete$largest_haploblock, ")")
 
 # Merge `incomplete.csv` with `df_long` while preserving order
-#df_long <- df_long %>%
-  #left_join(incomplete, by = c("sample", "Gene" = "gene")) %>%
-  #mutate(label = ifelse(Value == 0, label, NA))  # Only label missing/0 tiles
+df_long <- df_long %>%
+  left_join(incomplete, by = c("sample", "Gene" = "gene")) %>%
+  mutate(label = ifelse(Value == 0, label, NA))  # Only label missing/0 tiles
 
 # Ensure factor levels remain correct after merge
+df_long$sample <- factor(df_long$sample, levels = sample_order)
+df_long$Gene <- factor(df_long$Gene, levels = gene_order)
+
+# Load haplotype annotation data
+hap_data <- read.csv("edit_distance.csv", header = TRUE, stringsAsFactors = FALSE)
+
+# Create a new label column in the format (hap1, hap2)
+hap_data$hap_label <- paste0("(", hap_data$hap1, ", ", hap_data$hap2, ")")
+
+# Merge with df_long (must match on both gene and sample)
+df_long <- df_long %>%
+  left_join(hap_data, by = c("sample", "Gene" = "gene"))
+
+# Preserve factor levels again after merge
 df_long$sample <- factor(df_long$sample, levels = sample_order)
 df_long$Gene <- factor(df_long$Gene, levels = gene_order)
 
@@ -41,7 +55,8 @@ df_long$Gene <- factor(df_long$Gene, levels = gene_order)
 figure <- ggplot(df_long, aes(x = Gene, y = sample, fill = Value)) +
   geom_tile(color = "white") +
   scale_fill_gradient(low = "white", high = "red", na.value = "white") +
-  #geom_text(aes(label = label), size = 3, na.rm = TRUE) +  # Add text only to missing/0 tiles
+  geom_text(aes(label = label), size = 3, na.rm = TRUE) +
+  geom_text(aes(label = hap_label), color = "white", size = 2.9, fontface = "bold", na.rm = TRUE) +
   theme_minimal() +
   theme(
     axis.text.x = element_text(size = 8),
@@ -57,13 +72,14 @@ figure <- ggplot(df_long, aes(x = Gene, y = sample, fill = Value)) +
 
 print(figure)
 
+
 # Save the figure
-#ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
-#ggsave(filename = "hiphase_heat_map.png", plot = figure)
+ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
+ggsave(filename = "hiphase_heat_map.png", plot = figure)
 #ggsave(filename = "whatshap_heat_map.pdf", plot = figure)
 #ggsave(filename = "whatshap_heat_map.png", plot = figure)
 #ggsave(filename = "longphase_whatshap_heat_map.pdf", plot = figure)
-ggsave(filename = "longphase_heat_map.png", plot = figure)
+#ggsave(filename = "longphase_heat_map.png", plot = figure)
 
 # Load necessary library
 library(dplyr)

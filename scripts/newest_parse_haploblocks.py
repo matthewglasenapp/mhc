@@ -123,6 +123,7 @@ def parse_haploblocks(sample, het_sites, params):
 # Check whether each captured MHC gene is completely spanned by a haploblock
 def evaluate_gene_haploblocks(sample, het_sites, haploblocks):
 	# List of fully phased genes
+	haploblocks.sort()
 	gene_list = []
 	
 	# List of genes with partially overlapping haploblock
@@ -166,10 +167,27 @@ def evaluate_gene_haploblocks(sample, het_sites, haploblocks):
 
 		# Get details on haploblock overlap for genes of interest (HLA Class I/II) that were not fully phased 
 		if not fully_phased and gene in genes_of_interest:
-			overlapping_haploblocks = [(block_start, block_stop) for (block_start, block_stop) in haploblocks if (block_stop >= gene_start and block_start <= gene_stop)]
+			overlapping_haploblocks = []
+			upstream_block = None
+			downstream_block = None
+
+			for block_start, block_stop in haploblocks:
+				if block_stop < gene_start:
+					upstream_block = (block_start, block_stop)
+				elif block_start > gene_stop:
+					downstream_block = (block_start, block_stop)
+					break
+				elif block_stop >= gene_start and block_start <= gene_stop:
+					overlapping_haploblocks.append((block_start, block_stop))
+
 			num_pre_merge_haploblocks = len(overlapping_haploblocks)  # Track count before extension & merging
 			print(f"Processing {sample} {gene}")
 			print(f"Overlapping unextended haploblocks: {len(overlapping_haploblocks)}")
+
+			if upstream_block:
+				overlapping_haploblocks.insert(0, upstream_block)
+			if downstream_block:
+				overlapping_haploblocks.append(downstream_block)
 
 			# Step 1: Extend each haploblock independently
 			extended_haploblocks = []
@@ -185,32 +203,44 @@ def evaluate_gene_haploblocks(sample, het_sites, haploblocks):
 			print(f"Extended haploblocks: {len(extended_haploblocks)}")
 
 			# Step 2: Merge overlapping extended haploblocks
-			merged_intervals = []
-			extended_haploblocks.sort()
+			# merged_intervals = []
+			# extended_haploblocks.sort()
+
+			# for start, stop in extended_haploblocks:
+			# 	if not merged_intervals or start > merged_intervals[-1][1]:
+			# 		merged_intervals.append((start, stop))
+			# 	else:
+			# 		last_start, last_stop = merged_intervals[-1]
+			# 		new_stop = max(last_stop, stop)
+			# 		merged_intervals[-1] = (last_start, new_stop)
+
+			# print(f"Merged haploblocks: {len(merged_intervals)}")
+
+			# # Step 3: Compute overlap & percentage
+			# total_overlap = 0
+			# for start, stop in merged_intervals:
+			# 	overlap_start = max(start, gene_start)
+			# 	overlap_stop = min(stop, gene_stop)
+			# 	overlap_length = max(0, overlap_stop - overlap_start)
+			# 	total_overlap += overlap_length
+			# prop_overlap = total_overlap / gene_length
+			# prop_phased_string = f"{prop_overlap * 100:.2f}%"
+
+			# Compute the proportion of the gene spanned by the largest extended haploblock
+			max_overlap = 0
 
 			for start, stop in extended_haploblocks:
-				if not merged_intervals or start > merged_intervals[-1][1]:
-					merged_intervals.append((start, stop))
-				else:
-					last_start, last_stop = merged_intervals[-1]
-					new_stop = max(last_stop, stop)
-					merged_intervals[-1] = (last_start, new_stop)
-
-			print(f"Merged haploblocks: {len(merged_intervals)}")
-
-			# Step 3: Compute overlap & percentage
-			total_overlap = 0
-			for start, stop in merged_intervals:
 				overlap_start = max(start, gene_start)
 				overlap_stop = min(stop, gene_stop)
 				overlap_length = max(0, overlap_stop - overlap_start)
-				total_overlap += overlap_length
-			prop_overlap = total_overlap / gene_length
-			prop_phased_string = f"{prop_overlap * 100:.2f}%"
+				max_overlap = max(max_overlap, overlap_length)
+			prop_overlap = max_overlap / gene_length
+			largest_overlap_string = f"{prop_overlap*100:.2f}%"
 
 			# Use the pre-merge haploblock count, not merged count!
-			sample_incomplete_data.append([sample, gene, num_pre_merge_haploblocks, prop_phased_string])
-			print(f"{sample} {gene}, Pre-Merge Haploblocks: {num_pre_merge_haploblocks}, Prop Phased: {prop_phased_string}")
+			sample_incomplete_data.append([sample, gene, num_pre_merge_haploblocks, largest_overlap_string])
+			print(f"{sample} {gene}, Pre-Merge Haploblocks: {num_pre_merge_haploblocks}")
+			print(f"Proportion of gene contained in largest overlapping haploblock: {largest_overlap_string}")
 
 	return sample, gene_list, sample_incomplete_data
 
@@ -229,7 +259,7 @@ def write_results(phaser, gene_haploblock_dict, incomplete_data):
 	if incomplete_data:
 		with open(f"incomplete.{phaser}.csv", "w", newline="") as csvfile:
 			csv_writer = csv.writer(csvfile)
-			csv_writer.writerow(["sample", "gene", "num_haploblocks", "prop_phased"])
+			csv_writer.writerow(["sample", "gene", "num_haploblocks", "largest_haploblock"])
 			csv_writer.writerows(incomplete_data)
 
 def make_heatmap_data(phaser, gene_haploblock_dict, incomplete_data):
