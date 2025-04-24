@@ -3,7 +3,8 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-input_json = "/Users/matt/Desktop/fasta_dict.json"
+#input_json = "/Users/matt/Desktop/fasta_dict.json"
+#input_json = "/Users/matt/Desktop/cds_dict.json"
 output_fasta = "/Users/matt/Desktop/HLA_Class_I_haplotypes.fa"
 
 def json_to_fasta(input_json, output_fasta):

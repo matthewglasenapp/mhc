@@ -1,6 +1,7 @@
 library(tidyr)
 library(ggplot2)
 library(dplyr)
+library(viridis)
 
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/phase_heat_map/")
 
@@ -9,6 +10,9 @@ data <- read.csv("phase_map.hiphase.csv", header = TRUE, stringsAsFactors = FALS
 #data <- read.csv("phase_map.whatshap.csv", header = TRUE, stringsAsFactors = FALSE)
 #data <- read.csv("phase_map.longphase.csv", header = TRUE, stringsAsFactors = FALSE)
 colnames(data) <- gsub("\\.", "-", colnames(data))  # Replace dots with dashes
+
+hprc_samples <- c("HG002", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309")
+class_I <- c("HLA-A", "HLA-B", "HLA-C")
 
 # Convert samples and genes into factors to preserve order
 sample_order <- rev(data$sample)  # Reverse sample order
@@ -72,6 +76,228 @@ figure <- ggplot(df_long, aes(x = Gene, y = sample, fill = Value)) +
 
 print(figure)
 
+# ======================== #
+
+# Define HPRC samples and class I genes
+hprc_samples <- c("HG002", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309")
+class_I <- c("HLA-A", "HLA-B", "HLA-C")
+
+# Prepare data for Class I heatmap
+df_classI <- df_long %>%
+  filter(sample %in% hprc_samples, Gene %in% class_I) %>%
+  mutate(
+    raw1 = hap1,
+    raw2 = hap2,
+    hap1 = ifelse(raw1 == "NA", 0, as.numeric(raw1)),
+    hap2 = ifelse(raw2 == "NA", 0, as.numeric(raw2)),
+    hap1 = ifelse(is.na(hap1) & !is.na(hap2), 0, hap1),
+    hap2 = ifelse(is.na(hap2) & !is.na(hap1), 0, hap2),
+    both_missing = is.na(raw1) & is.na(raw2),
+    mean_hap = ifelse(both_missing, NA, (hap1 + hap2) / 2),
+    hap_label = case_when(
+      is.na(raw1) & is.na(raw2) ~ NA_character_,
+      TRUE ~ paste0(
+        ifelse(is.na(raw1), "NA", raw1),
+        " | ",
+        ifelse(is.na(raw2), "NA", raw2)
+      )
+    ),
+    text_color = ifelse(hap_label == "NA | NA" |
+                          (sample == "NA19240" & Gene == "HLA-B" & mean_hap > 0.9),
+                        "black", "white"))
+
+# Plot heatmap
+test1 <- ggplot(df_classI, aes(x = Gene, y = sample, fill = mean_hap)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = hap_label, color = text_color), size = 4, fontface = "bold", na.rm = TRUE) +
+  #scale_fill_gradient(low = "red", high = "white", na.value = "grey", name = "Mean Edit Distance") +
+  scale_fill_viridis_c(option = "D", direction = 1, na.value = "grey", name = "Mean Edit Distance") + 
+  scale_color_identity() +
+  labs(
+    title = "Mean Edit Distance to HPRC HLA Haplotypes",
+    x = "Gene",
+    y = "Sample"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+
+print(test1)
+
+ggsave(filename = "test1.png", plot = test1)
+
+# ===================================== #
+
+# Define HPRC samples and class I genes
+hprc_samples <- c("HG002", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309")
+class_I <- c("HLA-A", "HLA-B", "HLA-C")
+
+# Transform df_long into long format with hap1 and hap2 as separate rows
+df_classI_long <- df_long %>%
+  filter(sample %in% hprc_samples, Gene %in% class_I) %>%
+  select(sample, Gene, hap1, hap2) %>%
+  mutate(
+    hap1 = ifelse(hap1 == "NA", NA, hap1),
+    hap2 = ifelse(hap2 == "NA", NA, hap2)
+  ) %>%
+  pivot_longer(cols = c(hap1, hap2), names_to = "hap", values_to = "edit_distance") %>%
+  mutate(
+    edit_distance = as.numeric(edit_distance),
+    Gene_hap = paste0(Gene, "_", ifelse(hap == "hap1", "1", "2")),
+    label = ifelse(is.na(edit_distance), NA_character_, as.character(edit_distance)),
+    text_color = ifelse(is.na(edit_distance) | edit_distance > 500, "black", "white")
+  )
+
+# Plot heatmap
+test2 <- ggplot(df_classI_long, aes(x = Gene_hap, y = sample, fill = edit_distance)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label, color = text_color), size = 4, fontface = "bold", na.rm = TRUE) +
+  #scale_fill_gradient(low = "red", high = "white", na.value = "grey", name = "Mean Edit\n Distance") +
+  scale_fill_viridis_c(option = "D", direction = 1, na.value = "grey", name = "Edit Distance") + 
+  scale_color_identity() +
+  labs(
+    title = "Mean Edit Distance to HPRC HLA Haplotypes",
+    x = "Gene Haplotype",
+    y = "Sample"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+
+print(test2)
+
+ggsave(filename = "test2.png", plot = test2, width = 10, height = 6)
+
+# ==================================== #
+# Define HPRC samples and class I genes
+hprc_samples <- c("HG002", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309")
+class_I <- c("HLA-A", "HLA-B", "HLA-C")
+
+# Make long format from df_long with edit distances and alignment lengths
+df_classI_long <- df_long %>%
+  filter(sample %in% hprc_samples, Gene %in% class_I) %>%
+  select(sample, Gene, hap1, hap2, alignment_length_1, alignment_length_2) %>%
+  mutate(
+    hap1 = ifelse(hap1 == "NA", NA, hap1),
+    hap2 = ifelse(hap2 == "NA", NA, hap2),
+    alignment_length_1 = as.numeric(alignment_length_1),
+    alignment_length_2 = as.numeric(alignment_length_2)
+  ) %>%
+  pivot_longer(
+    cols = c(hap1, hap2),
+    names_to = "hap",
+    values_to = "edit_distance"
+  ) %>%
+  mutate(
+    alignment_length = ifelse(hap == "hap1", alignment_length_1, alignment_length_2),
+    edit_distance = as.numeric(edit_distance),
+    similarity_score = ifelse(!is.na(edit_distance) & !is.na(alignment_length),
+                              1 - (edit_distance / alignment_length), NA),
+    Gene_hap = paste0(Gene, "_", ifelse(hap == "hap1", "1", "2")),
+    label = case_when(
+      is.na(similarity_score) ~ NA_character_,
+      similarity_score == 1 ~ "1",
+      TRUE ~ sprintf("%.3f", similarity_score)
+    ),
+    text_color = ifelse(is.na(similarity_score) | similarity_score < 0.9, "black", "white")
+  )
+
+# Plot
+similarity_plot <- ggplot(df_classI_long, aes(x = Gene_hap, y = sample, fill = similarity_score)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = label, color = text_color), size = 4, fontface = "bold", na.rm = TRUE) +
+  #scale_fill_gradient(high = "red", low = "white", na.value = "grey", name = #"Percent\nSequence\nIdentity") +
+  scale_fill_viridis_c(option = "D", direction = -1, na.value = "grey", name = "Percent\nSequence\nIdentity") + 
+  scale_color_identity() +
+  labs(
+    title = "Normalized Edit Distance to HPRC HLA Haplotypes",
+    x = "Gene Haplotype",
+    y = "Sample"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  )
+
+print(similarity_plot)
+
+ggsave(filename = "test3.png", plot = similarity_plot, width = 10, height = 6)
+
+#######################
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+
+# Load main heatmap data
+data <- read.csv("phase_map.hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
+colnames(data) <- gsub("\\.", "-", colnames(data))  # Replace dots with dashes
+
+# Define HPRC samples and Class I genes
+hprc_samples <- c("HG002", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309")
+class_I <- c("HLA-A", "HLA-B", "HLA-C")
+
+# Convert samples and genes into factors to preserve order
+sample_order <- rev(data$sample)
+gene_order <- colnames(data)[-1]
+
+# Reshape data
+df_long <- pivot_longer(data, cols = -sample, names_to = "Gene", values_to = "Value")
+df_long$sample <- factor(df_long$sample, levels = sample_order)
+df_long$Gene <- factor(df_long$Gene, levels = gene_order)
+
+# ✅ Load incomplete.csv FIRST
+incomplete <- read.csv("incomplete.hiphase.csv", header = TRUE, stringsAsFactors = FALSE)
+
+# Merge and calculate percent covered
+df_long <- df_long %>%
+  left_join(incomplete, by = c("sample", "Gene" = "gene")) %>%
+  mutate(
+    largest_haploblock = as.numeric(gsub("%", "", largest_haploblock)),
+    percent_covered = ifelse(Value == 1, 100, largest_haploblock)
+  )
+
+# Ensure order is still preserved after join
+df_long$sample <- factor(df_long$sample, levels = sample_order)
+df_long$Gene <- factor(df_long$Gene, levels = gene_order)
+
+# Final plot — no annotations, just fill
+test4 <- ggplot(df_long, aes(x = Gene, y = sample, fill = percent_covered)) +
+  geom_tile(color = "white") +
+  #scale_fill_gradient(low = "white", high = "red", na.value = "white",
+                      #name = "Percent Gene\nCovered by\nLargest\nHaploblock") 
+  scale_fill_viridis_c(option = "D", direction = -1, na.value = "white", 
+                       name = "Percent Gene\nCovered by\nLargest\nHaploblock")
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 7),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    legend.position = "right"
+  ) +
+  labs(
+    x = "Gene",
+    y = "Sample"
+  )
+
+print(test4)
+
+
+ggsave(filename = "test4.png", plot = test4)
 
 # Save the figure
 ggsave(filename = "hiphase_heat_map.pdf", plot = figure)

@@ -22,7 +22,7 @@ def populate_ihw_dict():
 	with open(ihw_data_file, "r") as f:
 		lines = f.read().splitlines()
 
-	for line in lines[1:]:
+	for line in lines:
 		fields = line.split("\t")
 		fields = [f if f.strip() else "NA" for f in fields]
 		availability, ihw_id, alternate_id, sex, ethnicity, workshop = fields[:6]
@@ -86,8 +86,8 @@ def main():
 
 	print(IHW09117_allele_1_id)
 	print(IHW09117_allele_2_id)
-	print(IHW09117_allele_1_seq)
-	print(IHW09117_allele_2_seq)
+	# print(IHW09117_allele_1_seq)
+	# print(IHW09117_allele_2_seq)
 
 
 
