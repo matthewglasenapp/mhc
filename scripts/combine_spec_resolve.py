@@ -90,12 +90,12 @@ def populate_ihw_dict():
 def write_results():
 	with open(output_file, "w", newline="") as f:
 		writer = csv.writer(f)
-		
+
 		# Columns: sample, source, A_1, A_2, ..., DRB1_1, DRB1_2
 		gene_pairs = sorted([f"{gene}_1" for gene in genes] + [f"{gene}_2" for gene in genes])
 		header = ["sample", "source"] + gene_pairs
 		writer.writerow(header)
-		
+
 		for sample in samples:
 			# IHW
 			row = [sample, "IHW"]
@@ -104,39 +104,49 @@ def write_results():
 					alleles = ihw_data_dict[sample]["hla"].get(gene, ["", ""])
 				else:
 					alleles = ["", ""]
-				alleles += [""] * (2 - len(alleles))  # pad if needed
+				alleles += [""] * (2 - len(alleles))
+				if all("*" in a for a in alleles[:2]):
+					alleles[:2] = sorted(alleles[:2], key=lambda x: int(x.split("*")[1].split(":")[0]))
 				row.extend(alleles[:2])
 			writer.writerow(row)
-			
+
 			# revio_spechla
 			row = [sample, "revio_spechla"]
 			for gene in genes:
 				alleles = spechla["revio"][gene].get(sample, [])
 				alleles += [""] * (2 - len(alleles))
+				if all("*" in a for a in alleles[:2]):
+					alleles[:2] = sorted(alleles[:2], key=lambda x: int(x.split("*")[1].split(":")[0]))
 				row.extend(alleles[:2])
 			writer.writerow(row)
-			
+
 			# promethion_spechla
 			row = [sample, "promethion_spechla"]
 			for gene in genes:
 				alleles = spechla["promethion"][gene].get(sample, [])
 				alleles += [""] * (2 - len(alleles))
+				if all("*" in a for a in alleles[:2]):
+					alleles[:2] = sorted(alleles[:2], key=lambda x: int(x.split("*")[1].split(":")[0]))
 				row.extend(alleles[:2])
 			writer.writerow(row)
-			
+
 			# revio_resolve
 			row = [sample, "revio_resolve"]
 			for gene in genes:
 				alleles = resolve["revio"][gene].get(sample, [])
 				alleles += [""] * (2 - len(alleles))
+				if all("*" in a for a in alleles[:2]):
+					alleles[:2] = sorted(alleles[:2], key=lambda x: int(x.split("*")[1].split(":")[0]))
 				row.extend(alleles[:2])
 			writer.writerow(row)
-			
+
 			# promethion_resolve
 			row = [sample, "promethion_resolve"]
 			for gene in genes:
 				alleles = resolve["promethion"][gene].get(sample, [])
 				alleles += [""] * (2 - len(alleles))
+				if all("*" in a for a in alleles[:2]):
+					alleles[:2] = sorted(alleles[:2], key=lambda x: int(x.split("*")[1].split(":")[0]))
 				row.extend(alleles[:2])
 			writer.writerow(row)
 
@@ -146,7 +156,7 @@ def main():
 	populate_hla_resolve_dict()
 	#print(resolve)
 	populate_ihw_dict()
-	print(ihw_data_dict)
+	#print(ihw_data_dict)
 	write_results()
 
 if __name__ == "__main__":
