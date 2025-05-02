@@ -11,28 +11,26 @@ MHC_III = "chr6:31519479-32407181"
 MHC_II = "chr6:32439877-33409896"
 
 sample = "HG002"
-# mhc_classes = ["MHC_Class_I"]
-mhc_classes = ["MHC_Class_II"]
-# mhc_classes = ["MHC_Class_I", "MHC_Class_II"]
-# mhc_classes = ["MHC_Class_III"]
+mhc_classes = ["MHC_Class_I", "MHC_Class_II", "MHC_Class_III"]
 
-root_dir = "/hb/scratch/mglasena/downsample/"
+root_dir = "/hb/scratch/mglasena/downsample_replicates/"
 reference_fasta = os.path.join(root_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
 deepvariant_sif = os.path.join(root_dir, "deepvariant_sif/deepvariant.sif")
 temporary_directory = "/hb/scratch/mglasena/temp/"
-mapped_bam_file = "/hb/scratch/mglasena/test_pacbio/processed_data/mapped_bam/HG002.dedup.trimmed.hg38.chr6.bam"
+mapped_bam_file = "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/mapped_bam/HG002.dedup.trimmed.hg38.chr6.bam"
 giab_benchmark_dir = "/hb/scratch/mglasena/MHC/concordance/GIAB_benchmark/"
-regions_file_class_I = "/hb/scratch/mglasena/downsample/merged_hla_legacy_class_I_subset.bed"
-regions_file_class_II = "/hb/scratch/mglasena/downsample/merged_hla_legacy_class_II_subset.bed"
-regions_file_class_III = "/hb/scratch/mglasena/downsample/merged_hla_legacy_class_III_subset.bed"
+
+regions_file_class_I = "/hb/scratch/mglasena/downsample_replicates/merged_hla_legacy_class_I_subset.bed"
+regions_file_class_II = "/hb/scratch/mglasena/downsample_replicates/merged_hla_legacy_class_II_subset.bed"
+regions_file_class_III = "/hb/scratch/mglasena/downsample_replicates/merged_hla_legacy_class_III_subset.bed"
 rtg_path = "/hb/home/mglasena/.conda/envs/happy/bin/rtg"
 rtg_template = "/hb/scratch/mglasena/MHC/concordance/hap_py_input/rtg_sdf_template"
-tandem_repeat_bed = "/hb/scratch/mglasena/downsample/repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed"
-pbtrgt_repeat_file = "/hb/scratch/mglasena/downsample/repeats_bed/polymorphic_repeats.hg38.bed"
+tandem_repeat_bed = "/hb/scratch/mglasena/downsample_replicates/repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed"
+pbtrgt_repeat_file = "/hb/scratch/mglasena/downsample_replicates/repeats_bed/polymorphic_repeats.hg38.bed"
 
-mosdepth_regions_file_class_I = "/hb/scratch/mglasena/downsample/mhc_class_I_mosdepth_regions.bed"
-mosdepth_regions_file_class_II = "/hb/scratch/mglasena/downsample/mhc_class_II_mosdepth_regions.bed"
-mosdepth_regions_file_class_III = "/hb/scratch/mglasena/downsample/mhc_class_III_mosdepth_regions.bed"
+mosdepth_regions_file_class_I = "/hb/scratch/mglasena/downsample_replicates/mhc_class_I_mosdepth_regions.bed"
+mosdepth_regions_file_class_II = "/hb/scratch/mglasena/downsample_replicates/mhc_class_II_mosdepth_regions.bed"
+mosdepth_regions_file_class_III = "/hb/scratch/mglasena/downsample_replicates/mhc_class_III_mosdepth_regions.bed"
 
 # Random Seed
 random_seed = 42
@@ -70,26 +68,37 @@ def split_bam():
 	subprocess.run(subset_MHC_II, shell=True, check=True)
 	subprocess.run(subset_MHC_III, shell=True, check=True)
 
-def downsample_bams(proportion):
-	input_BAMs = ["MHC_Class_I.bam", "MHC_Class_II.bam", "MHC_Class_III.bam"]
+def downsample_bams(proportion, rep, mhc_class):
+	replicate_dir = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"))
+	os.makedirs(replicate_dir, exist_ok=True)
 
-	for bam in input_BAMs:
-		input_file = os.path.join(root_dir, bam)
-		output_prefix = bam.split(".")[0] + "_downsampled.bam"
-		output_bam = os.path.join(root_dir, str(proportion), output_prefix)
-		downsample_cmd = "gatk DownsampleSam -I {input_bam} -O {output_bam} -P {probability} -S HighAccuracy -R {random_seed} --CREATE_INDEX true --TMP_DIR {temp_dir} --VALIDATION_STRINGENCY LENIENT".format(input_bam = input_file, output_bam = output_bam, probability = proportion, random_seed = random_seed, temp_dir = temporary_directory)
+	input_file = os.path.join(root_dir, f"{mhc_class}.bam")
+	output_bam = os.path.join(replicate_dir, f"{mhc_class}_downsampled.bam")
+	seed = random_seed + rep
 
-		subprocess.run(downsample_cmd, shell=True, check=True)
+	downsample_cmd = (
+		"gatk DownsampleSam -I {input_bam} -O {output_bam} "
+		"-P {probability} -S HighAccuracy -R {random_seed} "
+		"--CREATE_INDEX true --TMP_DIR {temp_dir} --VALIDATION_STRINGENCY LENIENT"
+	).format(
+		input_bam=input_file,
+		output_bam=output_bam,
+		probability=proportion,
+		random_seed=seed,
+		temp_dir=temporary_directory
+	)
 
-def merge_downsampled_bams(proportion):
+	subprocess.run(downsample_cmd, shell=True, check=True)
+
+def merge_downsampled_bams(proportion, rep):
 	# Define input and output paths
 	input_bams = [
-	os.path.join(root_dir, str(proportion), "MHC_Class_I_downsampled.bam"),
-	os.path.join(root_dir, str(proportion), "MHC_Class_II_downsampled.bam"),
-	os.path.join(root_dir, str(proportion), "MHC_Class_III_downsampled.bam"),
+	os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "MHC_Class_I_downsampled.bam"),
+	os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "MHC_Class_II_downsampled.bam"),
+	os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "MHC_Class_III_downsampled.bam"),
 	]
 
-	output_bam = os.path.join(root_dir, str(proportion), "merged_downsampled.bam")
+	output_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "merged_downsampled.bam")
 
 	input_file_string = ' '.join(input_bams)
 
@@ -99,7 +108,7 @@ def merge_downsampled_bams(proportion):
 	subprocess.run(merge_cmd, shell=True, check=True)
 	subprocess.run(index_cmd, shell=True, check=True)
 
-def run_mosdepth(proportion, mhc_class):
+def run_mosdepth(proportion, mhc_class, rep):
 	if mhc_class == "MHC_Class_I":
 		regions = mosdepth_regions_file_class_I
 	elif mhc_class == "MHC_Class_II":
@@ -107,8 +116,8 @@ def run_mosdepth(proportion, mhc_class):
 	elif mhc_class == "MHC_Class_III":
 		regions = mosdepth_regions_file_class_III
 	
-	input_dir = os.path.join(root_dir, str(proportion))
-	input_bam = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.bam")
+	input_dir = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"))
+	input_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.bam")
 	os.chdir(input_dir)
 
 	threads = 4 
@@ -117,10 +126,11 @@ def run_mosdepth(proportion, mhc_class):
 	mosdepth_cmd = "mosdepth --flag 3328 --mapq {mapq} --by {regions} -t {threads} {prefix} {input_bam}".format(mapq = mapq_threshold, regions = regions, threads = 4, prefix = mhc_class, input_bam = input_bam)
 	subprocess.run(mosdepth_cmd, shell=True, check=True)
 
-def parse_mosdepth(proportion, mhc_class):
-	coverage_dict[mhc_class][str(proportion)] = {}
+def parse_mosdepth(proportion, mhc_class, rep):
+	replicate_id = f"{proportion}_rep{rep}"
+	coverage_dict[mhc_class][replicate_id] = {}
 	
-	regions_file = os.path.join(root_dir, str(proportion), mhc_class + ".regions.bed.gz")
+	regions_file = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".regions.bed.gz")
 	
 	with gzip.open(regions_file, "rt") as f:
 		regions = f.read().splitlines()
@@ -129,28 +139,31 @@ def parse_mosdepth(proportion, mhc_class):
 			fields = region.split("\t")
 			gene = fields[3].split("_")[0]
 			coverage_depth = float(fields[4])
-			coverage_dict[mhc_class][str(proportion)][gene] = coverage_depth
+			coverage_dict[mhc_class][replicate_id][gene] = coverage_depth
 
-def count_reads(proportion, mhc_class):
-	#input_bam = os.path.join(root_dir, str(proportion), "merged_downsampled.bam")
-	input_bam = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.bam")
+def count_reads(proportion, mhc_class, rep):
+	#input_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "merged_downsampled.bam")
+	input_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.bam")
 
 	count_cmd = "samtools view -c {input_file}".format(input_file = input_bam)
 	read_count = int(subprocess.check_output(count_cmd, shell=True).decode("utf-8").strip())
 
 	return read_count
 
-def call_variants(proportion, mhc_class):
-	input_dir = os.path.join(root_dir, str(proportion))
-	#input_bam = os.path.join(root_dir, str(proportion), "merged_downsampled.bam")
-	input_bam = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.bam")
+def call_variants(proportion, mhc_class, rep):
+	input_dir = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"))
+	#input_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "merged_downsampled.bam")
+	input_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.bam")
 
 	print("Running DeepVariant on {}".format(input_bam))
 
-	#output_vcf = os.path.join(root_dir, str(proportion), "merged_downsampled.vcf.gz")
-	#output_gvcf = os.path.join(root_dir, str(proportion), "merged_downsampled.g.vcf.gz")
-	output_vcf = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.vcf.gz")
-	output_gvcf = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.g.vcf.gz")
+	index_cmd = f"samtools index {input_bam}"
+	subprocess.run(index_cmd, shell=True, check=True)
+
+	#output_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "merged_downsampled.vcf.gz")
+	#output_gvcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "merged_downsampled.g.vcf.gz")
+	output_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.vcf.gz")
+	output_gvcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.g.vcf.gz")
 
 	ref_filename = os.path.basename(reference_fasta)
 
@@ -198,7 +211,7 @@ def call_variants(proportion, mhc_class):
 
 
 	# Log DeepVariant in own output file so it doesn't clog up STDOUT
-	deepvariant_log = os.path.join(root_dir, str(proportion), f"{mhc_class}_deepvariant.log")
+	deepvariant_log = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), f"{mhc_class}_deepvariant.log")
 
 	with open(deepvariant_log, "w") as log_file:
 		subprocess.run(deepvariant_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
@@ -207,8 +220,8 @@ def call_variants(proportion, mhc_class):
 	print("GVCF written to {}".format(output_gvcf))
 	print("\n\n")
 
-def run_happy(proportion, mhc_class):
-	outdir = os.path.join(root_dir, str(proportion))
+def run_happy(proportion, mhc_class, rep):
+	outdir = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"))
 	output_prefix = os.path.join(outdir, mhc_class)
 
 	if mhc_class == "MHC_Class_I":
@@ -218,8 +231,8 @@ def run_happy(proportion, mhc_class):
 	elif mhc_class == "MHC_Class_III":
 		regions = regions_file_class_III
 
-	#query_vcf = os.path.join(root_dir, str(proportion), "merged_downsampled.vcf.gz")
-	query_vcf = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.vcf.gz")
+	#query_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), "merged_downsampled.vcf.gz")
+	query_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.vcf.gz")
 
 	print("Benchmarking {}".format(query_vcf))
 
@@ -232,8 +245,10 @@ def run_happy(proportion, mhc_class):
 
 	subprocess.run(run_happy, shell=True, check=True)
 
-def parse_happy(proportion, mhc_class):
-	happy_output = os.path.join(root_dir, str(proportion), f"{mhc_class}.summary.csv")
+def parse_happy(proportion, mhc_class, rep):
+	replicate_id = f"{proportion}_rep{rep}"
+
+	happy_output = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), f"{mhc_class}.summary.csv")
 
 	with open(happy_output, "r") as f:
 		reader = csv.reader(f)
@@ -246,7 +261,7 @@ def parse_happy(proportion, mhc_class):
 		precision_idx = headers.index("METRIC.Precision")
 		f1_idx = headers.index("METRIC.F1_Score")
 
-		concordance_dict[mhc_class][str(proportion)] = {}
+		concordance_dict[mhc_class][replicate_id] = {}
 
 		# Read and process each row
 		for row in reader:
@@ -259,30 +274,30 @@ def parse_happy(proportion, mhc_class):
 				precision = float(row[precision_idx])
 				f1_score = float(row[f1_idx])
 
-				concordance_dict[mhc_class][str(proportion)][variant_type] = [recall, precision, f1_score]
+				concordance_dict[mhc_class][replicate_id][variant_type] = [recall, precision, f1_score]
 
-def write_results(mhc_class):
-	output_csv = mhc_class + "_downsample_concordance.csv"
+def write_results(mhc_class, rep):
+	output_csv = f"{mhc_class}_rep{rep}_summary.csv"
 	with open(output_csv, "w", newline="") as f:
 		writer = csv.writer(f)
 		header = ["Proportion", "Depth", "Variant", "Metric", "Value"]
 		writer.writerow(header)
 
-		for proportion, variants in concordance_dict[mhc_class].items():
-			avg_depth = sum(coverage_dict[mhc_class][proportion].values()) / len(coverage_dict[mhc_class][proportion])
+		for replicate_id, variants in concordance_dict[mhc_class].items():
+			avg_depth = sum(coverage_dict[mhc_class][replicate_id].values()) / len(coverage_dict[mhc_class][replicate_id])
 
 			for variant_type, metrics in variants.items():
 				recall, precision, f1_score = metrics
 
-				writer.writerow([proportion, avg_depth, variant_type, "Recall", recall])
-				writer.writerow([proportion, avg_depth, variant_type, "Precision", precision])
-				writer.writerow([proportion, avg_depth, variant_type, "F1", f1_score])
+				writer.writerow([replicate_id, avg_depth, variant_type, "Recall", recall])
+				writer.writerow([replicate_id, avg_depth, variant_type, "Precision", precision])
+				writer.writerow([replicate_id, avg_depth, variant_type, "F1", f1_score])
 
 # Run pbsv to call structural variants (SV)
-def call_structural_variants_pbsv(proportion, mhc_class):
+def call_structural_variants_pbsv(proportion, mhc_class, rep):
 	print("Calling structural variants with pbsv!")
 
-	input_bam = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.bam")
+	input_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.bam")
 
 	print("pbsv input file: {}".format(input_bam))
 
@@ -290,8 +305,8 @@ def call_structural_variants_pbsv(proportion, mhc_class):
 	index_cmd = f"samtools index {input_bam}"
 	subprocess.run(index_cmd, shell=True, check=True)
 	
-	output_svsig = os.path.join(root_dir, str(proportion), mhc_class + ".dedup.trimmed.hg38.chr6.svsig.gz")
-	output_vcf = os.path.join(root_dir, str(proportion), mhc_class + ".dedup.trimmed.hg38.chr6.SV.vcf")
+	output_svsig = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".dedup.trimmed.hg38.chr6.svsig.gz")
+	output_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".dedup.trimmed.hg38.chr6.SV.vcf")
 
 	pbsv_discover_cmd = "pbsv discover --region chr6 --tandem-repeats {tandem_repeat_file} {input_file} {output_file}".format(tandem_repeat_file = tandem_repeat_bed, input_file = input_bam, output_file = output_svsig)
 	
@@ -315,11 +330,11 @@ def call_structural_variants_pbsv(proportion, mhc_class):
 	print("\n\n")
 	# Genotype tandem repeats with pbtrgt
 	
-def genotype_tandem_repeats(proportion, mhc_class):
+def genotype_tandem_repeats(proportion, mhc_class, rep):
 	print("Genotyping tandem repeats with pbtrgt!")
 
-	input_dir = os.path.join(root_dir, str(proportion))
-	input_bam = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.bam")
+	input_dir = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"))
+	input_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.bam")
 
 	print("trgt input file: {}".format(input_bam))
 	
@@ -341,22 +356,22 @@ def genotype_tandem_repeats(proportion, mhc_class):
 	
 	subprocess.run(index_cmd, shell=True, check=True)
 
-	print("TR VCF written to {}".format(os.path.join(root_dir, str(proportion), output_prefix + ".vcf.gz")))
+	print("TR VCF written to {}".format(os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), output_prefix + ".vcf.gz")))
 	print("\n\n")
 
 # Merge SNV (DeepVariant), tandem repeat (pbtrgt), and structural variant (pbsv) vcfs with bcftools concat for use with HiPhase
-def merge_vcfs(proportion, mhc_class):
+def merge_vcfs(proportion, mhc_class, rep):
 	print("Merging DeepVariant, pbsv, and pbtrgt VCF files!")
 
-	input_snv = output_vcf = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.vcf.gz")
-	input_SV = os.path.join(root_dir, str(proportion), mhc_class + ".dedup.trimmed.hg38.chr6.SV.vcf.gz")
-	input_TR = os.path.join(root_dir, str(proportion), mhc_class + ".dedup.trimmed.hg38.chr6.TR.vcf.gz")
+	input_snv = output_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.vcf.gz")
+	input_SV = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".dedup.trimmed.hg38.chr6.SV.vcf.gz")
+	input_TR = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".dedup.trimmed.hg38.chr6.TR.vcf.gz")
 
 	print("DeepVariant input file: {}".format(input_snv))
 	print("pbsv input file: {}".format(input_SV))
 	print("pbtrgt input file: {}".format(input_TR))
 
-	output_vcf = os.path.join(root_dir, str(proportion), mhc_class + ".dedup.trimmed.hg38.chr6.vcf.gz")
+	output_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".dedup.trimmed.hg38.chr6.vcf.gz")
 	
 	concat_cmd = "bcftools concat --allow-overlaps {SNV_vcf} {SV_vcf} {TR_vcf} | grep -v -E 'chrX|chrY' | grep -v -E 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_genome} | bcftools sort | bgzip > {output_file}".format(SNV_vcf = input_snv, SV_vcf = input_SV, TR_vcf = input_TR, reference_genome = reference_fasta, output_file = output_vcf)
 	
@@ -370,25 +385,25 @@ def merge_vcfs(proportion, mhc_class):
 	print("\n\n")
 
 # Phase genotypes with HiPhase
-def phase_genotypes_hiphase(proportion, mhc_class):
+def phase_genotypes_hiphase(proportion, mhc_class, rep):
 	print("Phasing Genotypes with HiPhase!")
 
-	input_bam = os.path.join(root_dir, str(proportion), mhc_class + "_downsampled.bam")
-	input_vcf = os.path.join(root_dir, str(proportion), mhc_class + ".dedup.trimmed.hg38.chr6.vcf.gz")
+	input_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + "_downsampled.bam")
+	input_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".dedup.trimmed.hg38.chr6.vcf.gz")
 
 	print("Input BAM: {}".format(input_bam))
 	print("Input VCF: {}".format(input_vcf))
 	
-	output_bam = os.path.join(root_dir, str(proportion), mhc_class + ".dedup.trimmed.hg38.chr6.hiphase.haplotag.bam")
-	output_vcf = os.path.join(root_dir, str(proportion), mhc_class + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
-	output_summary_file = os.path.join(root_dir, str(proportion), mhc_class + ".phased.summary.txt")
-	output_blocks_file = os.path.join(root_dir, str(proportion), mhc_class + ".phased.blocks.txt")
-	output_stats_file = os.path.join(root_dir, str(proportion), mhc_class + ".phased.stats.txt")
+	output_bam = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".dedup.trimmed.hg38.chr6.hiphase.haplotag.bam")
+	output_vcf = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
+	output_summary_file = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".phased.summary.txt")
+	output_blocks_file = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".phased.blocks.txt")
+	output_stats_file = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".phased.stats.txt")
 
 	hiphase_cmd = "hiphase --threads {threads} --ignore-read-groups --reference {reference_genome} --bam {in_bam} --output-bam {out_bam} --vcf {in_vcf} --output-vcf {out_vcf} --stats-file {stats_file} --blocks-file {blocks_file} --summary-file {summary_file}".format(threads = max_threads, reference_genome = reference_fasta, in_bam = input_bam, out_bam = output_bam, in_vcf = input_vcf, out_vcf = output_vcf, stats_file = output_stats_file, blocks_file = output_blocks_file, summary_file = output_summary_file)
 	
 	# Log HiPhase in own output file so it doesn't clog up STDOUT
-	hiphase_log = os.path.join(root_dir, str(proportion), mhc_class + ".hiphase.log")
+	hiphase_log = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), mhc_class + ".hiphase.log")
 
 	with open(hiphase_log, "w") as log_file:
 		subprocess.run(hiphase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
@@ -401,31 +416,41 @@ def phase_genotypes_hiphase(proportion, mhc_class):
 	print("\n\n")
 
 def main():
-	#make_output_dirs()
-	#split_bam()
-	for mhc_class in mhc_classes:
-		for n in proportion_retain:
-			print(f"\nProcessing {mhc_class} at {n*100:.1f}% downsampling")
-			downsample_bams(n)
-			merge_downsampled_bams(n)
-			run_mosdepth(n, mhc_class)
-			parse_mosdepth(n, mhc_class)
+	# make_output_dirs()
+	# split_bam()
+	array_id = int(os.environ["array_id"])
+	print("Array ID: {}".format(array_id))
+	proportion = proportion_retain[array_id]
+	print(f"Processing proportion: {proportion}")
 
-			num_reads = count_reads(n, mhc_class)
+	for rep in range(num_replicates):
+		# Downsample all three MHC class BAMs
+		for mhc_class in mhc_classes:
+			downsample_bams(proportion, rep, mhc_class)
+		
+		# Merge once all 3 are ready
+		merge_downsampled_bams(proportion, rep)
+		
+		for mhc_class in mhc_classes:
+			run_mosdepth(proportion, mhc_class, rep)
+			parse_mosdepth(proportion, mhc_class, rep)
+
+			num_reads = count_reads(proportion, mhc_class, rep)
 
 			if num_reads >= min_reads:
-				call_variants(n, mhc_class)
-				#run_happy(n, mhc_class)
-				#parse_happy(n, mhc_class)
-				# call_structural_variants_pbsv(n, mhc_class)
-				# genotype_tandem_repeats(n, mhc_class)
-				# merge_vcfs(n, mhc_class)
-				# phase_genotypes_hiphase(n, mhc_class)
-
+				call_variants(proportion, mhc_class, rep)
+				# run_happy(proportion, mhc_class, rep)
+				# parse_happy(proportion, mhc_class, rep)
+				# call_structural_variants_pbsv(proportion, mhc_class, rep)
+				# genotype_tandem_repeats(proportion, mhc_class, rep)
+				# merge_vcfs(proportion, mhc_class, rep)
+				# phase_genotypes_hiphase(proportion, mhc_class, rep)
 			else:
-				print("Insufficient Reads for Variant Calling at {} Downample".format(n))
+				print(f"Insufficient reads for variant calling at {proportion}_rep{rep} for {mhc_class}")
 
-			# write_results(mhc_class)
+		# Write result *once per rep* after all classes processed
+		for mhc_class in mhc_classes:
+			write_results(mhc_class, rep)
 
 if __name__ == "__main__":
 	main()
