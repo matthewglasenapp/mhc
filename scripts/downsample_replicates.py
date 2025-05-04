@@ -248,50 +248,67 @@ def run_happy(proportion, mhc_class, rep):
 def parse_happy(proportion, mhc_class, rep):
 	replicate_id = f"{proportion}_rep{rep}"
 
-	happy_output = os.path.join(root_dir, os.path.join(str(proportion), f"rep{rep}"), f"{mhc_class}.summary.csv")
+	happy_output = os.path.join(
+		root_dir, os.path.join(str(proportion), f"rep{rep}"), f"{mhc_class}.summary.csv"
+	)
+
+	if not os.path.exists(happy_output):
+		print(f"Missing: {happy_output}")
+		return  # Safely skip
+
+	concordance_dict.setdefault(mhc_class, {})
+	concordance_dict[mhc_class].setdefault(replicate_id, {})
 
 	with open(happy_output, "r") as f:
 		reader = csv.reader(f)
 		headers = next(reader)
 
-		# Get column indices
 		type_idx = headers.index("Type")
 		filter_idx = headers.index("Filter")
 		recall_idx = headers.index("METRIC.Recall")
 		precision_idx = headers.index("METRIC.Precision")
 		f1_idx = headers.index("METRIC.F1_Score")
 
-		concordance_dict[mhc_class][replicate_id] = {}
-
-		# Read and process each row
 		for row in reader:
 			variant_type = row[type_idx]
 			filter_value = row[filter_idx]
-			
-			# Only keep rows where Filter == "PASS"
+
 			if filter_value == "PASS":
 				recall = float(row[recall_idx])
 				precision = float(row[precision_idx])
 				f1_score = float(row[f1_idx])
 
-				concordance_dict[mhc_class][replicate_id][variant_type] = [recall, precision, f1_score]
+				concordance_dict[mhc_class][replicate_id][variant_type] = [
+					recall,
+					precision,
+					f1_score,
+				]
 
-def write_results(mhc_class, rep):
-	output_csv = f"{mhc_class}_rep{rep}_summary.csv"
-	with open(output_csv, "w", newline="") as f:
-		writer = csv.writer(f)
-		header = ["Proportion", "Depth", "Variant", "Metric", "Value"]
-		writer.writerow(header)
+def write_results(mhc_class, proportion, rep):
+    replicate_id = f"{proportion}_rep{rep}"
+    output_dir = os.path.join(root_dir, str(proportion), f"rep{rep}")
+    os.makedirs(output_dir, exist_ok=True)
+    output_csv = os.path.join(output_dir, f"{mhc_class}_rep{rep}_summary.csv")
 
-		for replicate_id, variants in concordance_dict[mhc_class].items():
-			avg_depth = sum(coverage_dict[mhc_class][replicate_id].values()) / len(coverage_dict[mhc_class][replicate_id])
+    with open(output_csv, "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Proportion", "Depth", "Variant", "Metric", "Value"])
 
-			for variant_type, metrics in variants.items():
-				recall, precision, f1_score = metrics
+        variant_metrics = concordance_dict.get(mhc_class, {}).get(replicate_id, {})
+        depth_dict = coverage_dict.get(mhc_class, {}).get(replicate_id, {})
 
-				writer.writerow([replicate_id, avg_depth, variant_type, "Recall", recall])
-				writer.writerow([replicate_id, avg_depth, variant_type, "Precision", precision])
-				writer.writerow([replicate_id, avg_depth, variant_type, "F1", f1_score])
+        if not variant_metrics or not depth_dict:
+            print(f"Skipping {replicate_id} — missing concordance or coverage data.")
+            return
+
+        avg_depth = sum(depth_dict.values()) / len(depth_dict)
+
+        for variant_type, metrics in variant_metrics.items():
+            recall, precision, f1 = metrics
+
+            writer.writerow([proportion, avg_depth, variant_type, "Recall", recall])
+            writer.writerow([proportion, avg_depth, variant_type, "Precision", precision])
+            writer.writerow([proportion, avg_depth, variant_type, "F1", f1])
 
 # Run pbsv to call structural variants (SV)
 def call_structural_variants_pbsv(proportion, mhc_class, rep):
@@ -425,22 +442,22 @@ def main():
 
 	for rep in range(num_replicates):
 		# Downsample all three MHC class BAMs
-		for mhc_class in mhc_classes:
-			downsample_bams(proportion, rep, mhc_class)
+		# for mhc_class in mhc_classes:
+		# 	downsample_bams(proportion, rep, mhc_class)
 		
-		# Merge once all 3 are ready
-		merge_downsampled_bams(proportion, rep)
+		# # Merge once all 3 are ready
+		# merge_downsampled_bams(proportion, rep)
 		
 		for mhc_class in mhc_classes:
-			run_mosdepth(proportion, mhc_class, rep)
+			# run_mosdepth(proportion, mhc_class, rep)
 			parse_mosdepth(proportion, mhc_class, rep)
 
 			num_reads = count_reads(proportion, mhc_class, rep)
 
 			if num_reads >= min_reads:
-				call_variants(proportion, mhc_class, rep)
+				# call_variants(proportion, mhc_class, rep)
 				# run_happy(proportion, mhc_class, rep)
-				# parse_happy(proportion, mhc_class, rep)
+				parse_happy(proportion, mhc_class, rep)
 				# call_structural_variants_pbsv(proportion, mhc_class, rep)
 				# genotype_tandem_repeats(proportion, mhc_class, rep)
 				# merge_vcfs(proportion, mhc_class, rep)
@@ -450,7 +467,7 @@ def main():
 
 		# Write result *once per rep* after all classes processed
 		for mhc_class in mhc_classes:
-			write_results(mhc_class, rep)
+			write_results(mhc_class, proportion, rep)
 
 if __name__ == "__main__":
 	main()
