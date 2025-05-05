@@ -278,9 +278,9 @@ df_long$Gene <- factor(df_long$Gene, levels = gene_order)
 test4 <- ggplot(df_long, aes(x = Gene, y = sample, fill = percent_covered)) +
   geom_tile(color = "white") +
   #scale_fill_gradient(low = "white", high = "red", na.value = "white",
-                      #name = "Percent Gene\nCovered by\nLargest\nHaploblock") 
+                      #name = "Percent Gene\nCovered by\nLargest\nOverlapping/nHaploblock") 
   scale_fill_viridis_c(option = "D", direction = -1, na.value = "white", 
-                       name = "Percent Gene\nCovered by\nLargest\nHaploblock")
+                       name = "Percent Gene\nCovered by\nLargest\nOverlapping\nHaploblock")
   theme_minimal() +
   theme(
     axis.text.x = element_text(size = 8),
@@ -297,7 +297,7 @@ test4 <- ggplot(df_long, aes(x = Gene, y = sample, fill = percent_covered)) +
 print(test4)
 
 
-ggsave(filename = "test4.png", plot = test4)
+ggsave(filename = "phase_heat_map.pdf", plot = test4)
 
 # Save the figure
 ggsave(filename = "hiphase_heat_map.pdf", plot = figure)
