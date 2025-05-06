@@ -2,8 +2,8 @@ from Bio import SeqIO
 import numpy as np
 from numba import njit
 
-reference_file = "/Users/matt/Downloads/hla_nuc.fasta"
-input_file = "/Users/matt/Downloads/test.fa"
+reference_file = "/Users/matt/Downloads/hla_gen.fasta"
+input_file = "/Users/matt/Desktop/drb1.fasta"
 
 BASE_MAP = np.full(256, 4, dtype=np.uint8)
 BASE_MAP[ord('A')] = 0
@@ -77,7 +77,7 @@ class SequenceMatcher:
 
 			self.allele_db[gene].append((allele_name, encoded_seq))
 
-	def match_query_sequence(self, gene, query_name, query_sequence, max_dist=100):
+	def match_query_sequence(self, gene, query_name, query_sequence, max_dist=1000):
 		print(f"Query Sequence Name: {query_name}")
 		print(f"Query Sequence Gene: HLA-{gene}")
 		alleles = self.allele_db.get(gene)
@@ -114,7 +114,7 @@ def main():
 	matcher = SequenceMatcher(reference_file)
 	matcher.build_allele_database()
 	check_non_acgt_bases(matcher.allele_db)
-	process_fasta(input_file, "B", matcher)
+	process_fasta(input_file, "DRB1", matcher)
 
 if __name__ == "__main__":
 	main()
