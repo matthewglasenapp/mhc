@@ -127,3 +127,33 @@ print(combined_plot)
 
 ggsave(filename = "concordance_combined.pdf", plot = combined_plot)
 ggsave(filename = "concordance_combined.png", plot = combined_plot)
+
+plot3 <- ggplot(data1, aes(x = recall, y = precision, color = platform)) +
+  geom_point(size = 3, alpha = 0.8) +
+  facet_wrap(~type) +
+  theme_bw() +
+  scale_color_manual(
+    values = c(
+      "PacBio Revio" = "#5E3C99",      # magenta
+      "ONT PromethION" = "#999999"     # neutral gray
+    )
+  ) +
+  labs(
+    x = "Sensitivity (Recall)",
+    y = "Precision",
+    color = "Platform",
+  ) +
+  theme(
+    strip.text = element_text(size = 12, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold"),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10),
+    legend.position = "top",
+    legend.direction = "horizontal",
+  )
+
+plot3
+
+ggsave(filename = "concordance.pdf", plot = plot3)
+
+
