@@ -278,12 +278,13 @@ class Samples:
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
 
 		print("Samtools input file: {}".format(input_bam))
-
+  
 		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
 
 		# Extract chromosome 6 and exclude secondary and supplementary alignments
-		samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = max_threads, input_file = input_bam, output_file = output_bam)
-		
+		#samtools_cmd = "samtools view -@ {threads} -F 2304 -b {input_file} chr6 > '{output_file}'".format(threads = max_threads, input_file = input_bam, output_file = output_bam)
+		samtools_cmd = "samtools view -@ {threads} -F 2048 -b {input_file} chr6 > '{output_file}'".format(threads = max_threads, input_file = input_bam, output_file = output_bam)
+
 		subprocess.run(samtools_cmd, shell=True, check=True)
 
 		index_cmd = "samtools index {input_file}".format(input_file = output_bam)
@@ -355,7 +356,7 @@ class Samples:
 		output_svsig = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.svsig.gz")
 		output_vcf = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf")
 
-		pbsv_discover_cmd = "pbsv discover --region chr6 --tandem-repeats {tandem_repeat_file} {input_file} {output_file}".format(tandem_repeat_file = tandem_repeat_bed, input_file = input_bam, output_file = output_svsig)
+		pbsv_discover_cmd = "pbsv discover -a 0 -q 0 --region chr6 --tandem-repeats {tandem_repeat_file} {input_file} {output_file}".format(tandem_repeat_file = tandem_repeat_bed, input_file = input_bam, output_file = output_svsig)
 		
 		subprocess.run(pbsv_discover_cmd, shell=True, check=True)
 
@@ -636,14 +637,14 @@ def main():
 
 	if chr6_reads > min_reads_sample:
 		# sample.call_variants()
-		# sample.call_structural_variants_pbsv()
+		sample.call_structural_variants_pbsv()
 		# sample.call_structural_variants_sniffles()
 		# sample.genotype_tandem_repeats()
-		# sample.merge_vcfs()
-		# sample.phase_genotypes_hiphase()
+		sample.merge_vcfs()
+		sample.phase_genotypes_hiphase()
 		# sample.phase_genotypes_whatshap()
-		sample.phase_genotypes_longphase()
-		sample.merge_longphase_vcfs()
+		# sample.phase_genotypes_longphase()
+		# sample.merge_longphase_vcfs()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)
