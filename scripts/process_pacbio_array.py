@@ -356,6 +356,8 @@ class Samples:
 		output_svsig = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.svsig.gz")
 		output_vcf = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf")
 
+		# -a Don't downsample
+		# -q Don't filter by MapQ
 		pbsv_discover_cmd = "pbsv discover -a 0 -q 0 --region chr6 --tandem-repeats {tandem_repeat_file} {input_file} {output_file}".format(tandem_repeat_file = tandem_repeat_bed, input_file = input_bam, output_file = output_svsig)
 		
 		subprocess.run(pbsv_discover_cmd, shell=True, check=True)
@@ -626,25 +628,25 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	# sample.convert_bam_to_fastq()
-	# sample.mark_duplicates()
+	sample.convert_bam_to_fastq()
+	sample.mark_duplicates()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-	# sample.trim_adapters()
+	sample.trim_adapters()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-	# sample.align_to_reference()
+	sample.align_to_reference()
 	
 	chr6_reads = sample.filter_reads()
 
 	if chr6_reads > min_reads_sample:
-		# sample.call_variants()
+		sample.call_variants()
 		sample.call_structural_variants_pbsv()
-		# sample.call_structural_variants_sniffles()
-		# sample.genotype_tandem_repeats()
+		sample.call_structural_variants_sniffles()
+		sample.genotype_tandem_repeats()
 		sample.merge_vcfs()
 		sample.phase_genotypes_hiphase()
-		# sample.phase_genotypes_whatshap()
-		# sample.phase_genotypes_longphase()
-		# sample.merge_longphase_vcfs()
+		sample.phase_genotypes_whatshap()
+		sample.phase_genotypes_longphase()
+		sample.merge_longphase_vcfs()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)

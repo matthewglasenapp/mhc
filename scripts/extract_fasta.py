@@ -112,11 +112,13 @@ def filter_vcf(sample, phaser, cfg):
 	pass_vcf = os.path.join(filtered_vcf_dir, f"{phaser}_{sample}_PASS.vcf.gz")
 	filtered_vcf = os.path.join(filtered_vcf_dir, f"{phaser}_{sample}_filtered.vcf.gz")
 
-	# Step 1: Filter for PASS variants
-	subprocess.run(f"bcftools view -f PASS {input_vcf} -Oz -o {pass_vcf}", shell=True, check=True)
+	# Step 1: Filter for PASS variants and remove unphased hets and unsupported variant types
+	filter_expr = '(GT="hom" || GT~"\\|") && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
+	subprocess.run(f'bcftools view -f PASS -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
+
 	subprocess.run(f"bcftools index {pass_vcf}", shell=True, check=True)
 
-	# Step 2: Use pysam to find the first phased variant
+	# Step 2: Find first phased variant
 	vcf = pysam.VariantFile(pass_vcf)
 	first_phased_pos = None
 	chrom = None
@@ -135,13 +137,12 @@ def filter_vcf(sample, phaser, cfg):
 
 	region = f"{chrom}:{first_phased_pos}-"
 
-	# Step 3: Filter from the first phased variant onward
-	subprocess.run(f"bcftools view -r {region} {pass_vcf} -Oz -o {filtered_vcf}", shell=True, check=True)
+	# Step 3: Filter VCF from the first phased variant onward
+	subprocess.run(
+		f"bcftools view -r {region} {pass_vcf} -Oz -o {filtered_vcf}",
+		shell=True, check=True
+	)
 	subprocess.run(f"bcftools index {filtered_vcf}", shell=True, check=True)
-
-	# Cleanup
-	os.remove(pass_vcf)
-	os.remove(pass_vcf + ".csi")
 
 def run_vcf2fasta(tag, sample, gene, feature):
 	gene_id = gene.lower().replace("-", "_")
