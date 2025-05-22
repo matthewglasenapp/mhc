@@ -4,7 +4,7 @@ import subprocess
 import pysam
 
 vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
-reference_genome = "/hb/scratch/mglasena/test_pacbio/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
+reference_genome = "/hb/groups/cornejo_lab/matt/pacbio_capture/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
 gff_dir = "/hb/scratch/mglasena/test_vcf2fasta/gff/"
 # feature = "gene"
 features = ["CDS", "gene"]
@@ -29,19 +29,19 @@ stop_codons = ["TAA", "TAG", "TGA"]
 config = {
 	"revio_hiphase": {
 		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_hiphase/",
-		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz",
 		"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.hiphase.json"
-	},
-	"revio_longphase": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
-		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
-		"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.longphase.json"
-	},
-	"revio_whatshap": {
-		"vcf_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/",
-		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
-		"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.whatshap.json"
 	}
+	# "revio_longphase": {
+	# 	"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
+	# 	"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
+	# 	"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.longphase.json"
+	# },
+	# "revio_whatshap": {
+	# 	"vcf_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/",
+	# 	"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
+	# 	"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.whatshap.json"
+	# }
 	# "promethion_longphase": {
 	#     "vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_longphase/",
 	#     "vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz",

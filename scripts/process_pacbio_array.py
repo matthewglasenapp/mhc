@@ -420,20 +420,62 @@ class Samples:
 		print("TR VCF written to {}".format(os.path.join(Samples.pbtrgt_dir, output_prefix + ".vcf.gz")))
 		print("\n\n")
 
-	# Merge SNV (DeepVariant), tandem repeat (pbtrgt), and structural variant (pbsv) vcfs with bcftools concat for use with HiPhase
-	def merge_vcfs(self):
-		print("Merging DeepVariant, pbsv, and pbtrgt VCF files!")
+	# Phase genotypes with HiPhase
+	def phase_genotypes_hiphase(self):
+		print("Phasing Genotypes with HiPhase!")
 
 		input_snv = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SNV.vcf.gz")
 		input_SV = os.path.join(Samples.pbsv_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf.gz")
 		input_TR = os.path.join(Samples.pbtrgt_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.TR.vcf.gz")
 
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+
+		print("Input BAM: {}".format(input_bam))
+		print("Input SNV: {}".format(input_snv))
+		print("Input SV: {}".format(input_SV))
+		print("Input TR: {}".format(input_TR))
+		
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.hiphase.haplotag.bam")
+		output_snv = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.SNV.vcf.gz")
+		output_SV = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.SV.vcf.gz")
+		output_TR = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.TR.vcf.gz")
+
+		output_summary_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.summary.txt")
+		output_blocks_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
+		output_stats_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.stats.txt")
+
+		hiphase_cmd = f"hiphase --threads {max_threads} --ignore-read-groups --reference {reference_fasta} --bam {input_bam} --output-bam {output_bam} --vcf {input_snv} --output-vcf {output_snv} --vcf {input_SV} --output-vcf {output_SV} --vcf {input_TR} --output-vcf {output_TR} --stats-file {output_stats_file} --blocks-file {output_blocks_file} --summary-file {output_summary_file}"
+		
+		# Log HiPhase in own output file so it doesn't clog up STDOUT
+		hiphase_log = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".hiphase.log")
+
+		with open(hiphase_log, "w") as log_file:
+			subprocess.run(hiphase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
+
+		print("HiPhase phased SNV VCF: {}".format(output_snv))
+		print("HiPhase phased SV VCF: {}".format(output_SV))
+		print("HiPhase phased TR VCF: {}".format(output_TR))
+		print("HiPhase haplotagged BAM written to: {}".format(output_bam))
+		print("HiPhase phasing summary written to: {}".format(output_summary_file))
+		print("HiPhase phasing stats written to: {}".format(output_stats_file))
+		print("HiPhase phase blocks written to: {}".format(output_blocks_file))
+		print("\n\n")
+
+	# Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat 
+	def merge_vcfs(self):
+		print("Merging phased DeepVariant, pbsv, and TRGT VCF files!")
+
+		input_snv = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.SNV.vcf.gz")
+		input_SV = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.SV.vcf.gz")
+		input_TR = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.TR.vcf.gz")
+
 		print("DeepVariant input file: {}".format(input_snv))
 		print("pbsv input file: {}".format(input_SV))
 		print("pbtrgt input file: {}".format(input_TR))
 
-		output_vcf = os.path.join(Samples.merged_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.vcf.gz")
+		output_vcf = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz")
 		
+		# Copied directly from Holt et al. 2024 Supplementary Material Program 5. 
 		concat_cmd = "bcftools concat --allow-overlaps {SNV_vcf} {SV_vcf} {TR_vcf} | grep -v 'chrX|chrY' | grep -v 'SVTYPE=BND|SVTYPE=INV|SVTYPE=DUP' | bcftools norm -d none --fasta-ref {reference_genome} | bcftools sort | bgzip > {output_file}".format(SNV_vcf = input_snv, SV_vcf = input_SV, TR_vcf = input_TR, reference_genome = reference_fasta, output_file = output_vcf)
 		
 		subprocess.run(concat_cmd, shell=True, check=True)
@@ -443,37 +485,6 @@ class Samples:
 		subprocess.run(index_cmd, shell=True, check=True)
 
 		print("Merged VCF written to: {}".format(output_vcf))
-		print("\n\n")
-
-	# Phase genotypes with HiPhase
-	def phase_genotypes_hiphase(self):
-		print("Phasing Genotypes with HiPhase!")
-
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
-		input_vcf = os.path.join(Samples.merged_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.vcf.gz")
-
-		print("Input BAM: {}".format(input_bam))
-		print("Input VCF: {}".format(input_vcf))
-		
-		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.hiphase.haplotag.bam")
-		output_vcf = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.vcf.gz")
-		output_summary_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.summary.txt")
-		output_blocks_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.blocks.txt")
-		output_stats_file = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".phased.stats.txt")
-
-		hiphase_cmd = "hiphase --threads {threads} --ignore-read-groups --reference {reference_genome} --bam {in_bam} --output-bam {out_bam} --vcf {in_vcf} --output-vcf {out_vcf} --stats-file {stats_file} --blocks-file {blocks_file} --summary-file {summary_file}".format(threads = max_threads, reference_genome = reference_fasta, in_bam = input_bam, out_bam = output_bam, in_vcf = input_vcf, out_vcf = output_vcf, stats_file = output_stats_file, blocks_file = output_blocks_file, summary_file = output_summary_file)
-		
-		# Log HiPhase in own output file so it doesn't clog up STDOUT
-		hiphase_log = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".hiphase.log")
-
-		with open(hiphase_log, "w") as log_file:
-			subprocess.run(hiphase_cmd, shell=True, check=True, stdout=log_file, stderr=log_file)
-
-		print("HiPhase phased VCF written to: {}".format(output_vcf))
-		print("HiPhase haplotagged BAM written to: {}".format(output_bam))
-		print("HiPhase phasing summary written to: {}".format(output_summary_file))
-		print("HiPhase phasing stats written to: {}".format(output_stats_file))
-		print("HiPhase phase blocks written to: {}".format(output_blocks_file))
 		print("\n\n")
 
 	# Phase genotypes with WhatsHap
@@ -628,25 +639,25 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	sample.convert_bam_to_fastq()
-	sample.mark_duplicates()
+	# sample.convert_bam_to_fastq()
+	# sample.mark_duplicates()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-	sample.trim_adapters()
+	# sample.trim_adapters()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-	sample.align_to_reference()
+	# sample.align_to_reference()
 	
 	chr6_reads = sample.filter_reads()
 
 	if chr6_reads > min_reads_sample:
-		sample.call_variants()
-		sample.call_structural_variants_pbsv()
-		sample.call_structural_variants_sniffles()
-		sample.genotype_tandem_repeats()
-		sample.merge_vcfs()
+		# sample.call_variants()
+		# sample.call_structural_variants_pbsv()
+		# sample.call_structural_variants_sniffles()
+		# sample.genotype_tandem_repeats()
 		sample.phase_genotypes_hiphase()
-		sample.phase_genotypes_whatshap()
-		sample.phase_genotypes_longphase()
-		sample.merge_longphase_vcfs()
+		sample.merge_vcfs()
+		# sample.phase_genotypes_whatshap()
+		# sample.phase_genotypes_longphase()
+		# sample.merge_longphase_vcfs()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)
