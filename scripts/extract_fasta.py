@@ -5,7 +5,7 @@ import pysam
 
 vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
 reference_genome = "/hb/groups/cornejo_lab/matt/pacbio_capture/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
-gff_dir = "/hb/scratch/mglasena/test_vcf2fasta/gff/"
+gff_dir = "/hb/groups/cornejo_lab/matt/pacbio_capture/hla_gff/"
 # feature = "gene"
 features = ["CDS", "gene"]
 
@@ -17,8 +17,9 @@ genes_of_interest = ["HLA-A", "HLA-B", "HLA-C"]
 
 output_file = "fasta_dict.json"
 input_dir = os.getcwd()
-filtered_vcf_dir = os.path.join(input_dir, "filtered_vcf")
-fasta_dir = os.path.join(input_dir, "fasta_sequences")
+base_output_dir = "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data"
+filtered_vcf_dir = os.path.join(base_output_dir, "vcf2fasta_vcf")
+fasta_dir = os.path.join(base_output_dir, "fasta_haplotypes")
 os.makedirs(filtered_vcf_dir, exist_ok=True)
 os.makedirs(fasta_dir, exist_ok=True)
 

@@ -262,7 +262,7 @@ class Samples:
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.bam")
 		output_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".prowler.trimmed.hg38.rmdup.chr6.sniffles.vcf.gz")
 
-		sniffles_cmd = "sniffles --allow-overwrite -t {threads} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
+		sniffles_cmd = "sniffles --output-rnames --allow-overwrite -t {threads} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
 		subprocess.run(sniffles_cmd, shell=True, check=True)
 
 	def phase_genotypes_whatshap(self):

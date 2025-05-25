@@ -56,7 +56,7 @@ def process_fasta_to_csv(query_file, allele_db):
 		gene = query_name_fields[1]
 		gene_abr = gene.split("-")[1]
 		platform = query_name_fields[2]
-		haplotype = query_name_fields[3]
+		haplotype = query_name_fields[4]
 		seq = str(record.seq)
 		reference_alleles = allele_db[gene_abr]
 		tasks.append((sample, platform, gene_abr, haplotype, seq, reference_alleles))

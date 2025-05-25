@@ -7,6 +7,8 @@ from joblib import Parallel, delayed
 #phasers = ["longphase", "hiphase", "whatshap", "promethion"]
 phasers = ["longphase", "hiphase", "whatshap"]
 
+output_dir = "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/haploblocks/"
+os.makedirs(output_dir, exist_ok=True)
 
 # Config for each tool
 config = {
@@ -17,35 +19,35 @@ config = {
 		"haploblock_suffix": ".phased.blocks.txt",
 		"haploblock_parse": lambda fields: ("chr6", int(fields[4]) - 1, int(fields[5]))
 	},
-	# "whatshap": {
-	# 	"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_whatshap/",
-	# 	"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_whatshap/",
-	# 	"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
-	# 	"haploblock_suffix": ".phased.haploblocks.txt",
-	# 	"haploblock_parse": lambda fields: (fields[1], int(fields[3]) - 1, int(fields[4]))
-	# },
-	# "promethion": {
-	# 	# "vcf_dir": "/hb/scratch/mglasena/MHC/genotypes/promethion/",
-	# 	# "haploblock_dir": "/hb/scratch/mglasena/MHC/scripts/haploblocks/",
-	# 	# "vcf_suffix": ".hg38.promethion.phased.vcf.gz",
-	# 	# "haploblock_suffix": "_promethion_haploblocks.tsv",
-	# 	"vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap",
-	# 	"haploblock_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap",
-	# 	"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz",
-	# 	"haploblock_suffix": ".phased.haploblocks.txt",
-	# 	"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
-	# },
-	# "longphase": {
-	# 	"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
-	# 	"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
-	# 	"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
-	# 	"haploblock_suffix": ".phased.haploblocks.txt",
-	# 	"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
-	# 	}
+	"whatshap": {
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_whatshap/",
+		"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_whatshap/",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
+		"haploblock_suffix": ".phased.haploblocks.txt",
+		"haploblock_parse": lambda fields: (fields[1], int(fields[3]) - 1, int(fields[4]))
+	},
+	"promethion": {
+		# "vcf_dir": "/hb/scratch/mglasena/MHC/genotypes/promethion/",
+		# "haploblock_dir": "/hb/scratch/mglasena/MHC/scripts/haploblocks/",
+		# "vcf_suffix": ".hg38.promethion.phased.vcf.gz",
+		# "haploblock_suffix": "_promethion_haploblocks.tsv",
+		"vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap",
+		"haploblock_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap",
+		"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz",
+		"haploblock_suffix": ".phased.haploblocks.txt",
+		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
+	},
+	"longphase": {
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
+		"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
+		"haploblock_suffix": ".phased.haploblocks.txt",
+		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
+		}
 }
 
 #genes_bed = "hla_captured_genes.bed"
-genes_bed = "test.bed"
+genes_bed = "/hb/groups/cornejo_lab/matt/pacbio_capture/reference/parse_haploblocks_bed.bed"
 
 # "HG01891"
 samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
@@ -246,18 +248,18 @@ def evaluate_gene_haploblocks(sample, het_sites, haploblocks):
 
 def write_results(phaser, gene_haploblock_dict, incomplete_data):
 	# Write fully phased genes
-	with open(f"phased_genes.{phaser}.tsv", "w", newline="") as csv_file:
+	with open(os.path.join(output_dir, f"phased_genes.{phaser}.tsv"), "w", newline="") as csv_file:
 		writer = csv.writer(csv_file, delimiter="\t")
 		writer.writerow(["sample", "num_genes", "genes"])
 		for sample, gene_list in gene_haploblock_dict.items():
 			writer.writerow([sample, len(gene_list), ",".join(gene_list)])
 
-	with open(f"phased_genes.{phaser}.json", "w") as json_file:
+	with open(os.path.join(output_dir, f"phased_genes.{phaser}.json"), "w") as json_file:
 		json.dump(gene_haploblock_dict, json_file, indent=4)
 
 	# Write incomplete.csv if there are entries 
 	if incomplete_data:
-		with open(f"incomplete.{phaser}.csv", "w", newline="") as csvfile:
+		with open(os.path.join(output_dir, f"incomplete.{phaser}.csv"), "w", newline="") as csvfile:
 			csv_writer = csv.writer(csvfile)
 			csv_writer.writerow(["sample", "gene", "num_haploblocks", "largest_haploblock"])
 			csv_writer.writerows(incomplete_data)
@@ -266,7 +268,7 @@ def make_heatmap_data(phaser, gene_haploblock_dict, incomplete_data):
 	phased_count_dict = {gene: 0 for gene in genes_of_interest}
 	phased_status_dict = {sample: [] for sample in samples}
 
-	with open(f"phased_genes.{phaser}.tsv", "r") as f:
+	with open(os.path.join(output_dir, f"phased_genes.{phaser}.tsv"), "r") as f:
 		records = f.read().splitlines()[1:]
 
 	for item in records:
@@ -281,7 +283,7 @@ def make_heatmap_data(phaser, gene_haploblock_dict, incomplete_data):
 			else:
 				phased_status_dict[sample].append(0)
 
-	with open(f"phase_map.{phaser}.csv", "w", newline="") as csv_file:
+	with open(os.path.join(output_dir, f"phase_map.{phaser}.csv"), "w", newline="") as csv_file:
 		writer = csv.writer(csv_file, delimiter=",")
 		header = ["sample", "HLA-A", "HLA-B", "HLA-C", "HLA-DRB1", "HLA-DRB5", "HLA-DQA1", "HLA-DQA2", "HLA-DQB1", "HLA-DQB2", "HLA-DPA1", "HLA-DPB1"]
 		writer.writerow(header)

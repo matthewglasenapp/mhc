@@ -385,7 +385,7 @@ class Samples:
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
 		output_vcf = os.path.join(Samples.sniffles_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SV.vcf")
 
-		sniffles_cmd = "sniffles --allow-overwrite -t {threads} --reference {reference_genome} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, reference_genome = reference_fasta, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
+		sniffles_cmd = "sniffles --output-rnames --allow-overwrite -t {threads} --reference {reference_genome} --regions {bed_file} -i {input_bam} -v {output_vcf} --tandem-repeats {tandem_repeat_bed}".format(threads = max_threads, reference_genome = reference_fasta, bed_file = chr6_bed, input_bam = input_bam, output_vcf = output_vcf, tandem_repeat_bed = tandem_repeat_bed)
 		subprocess.run(sniffles_cmd, shell=True, check=True)
 
 		print("Sniffles SV VCF written to: {}".format(output_vcf))
@@ -651,13 +651,13 @@ def main():
 	if chr6_reads > min_reads_sample:
 		# sample.call_variants()
 		# sample.call_structural_variants_pbsv()
-		# sample.call_structural_variants_sniffles()
+		sample.call_structural_variants_sniffles()
 		# sample.genotype_tandem_repeats()
-		sample.phase_genotypes_hiphase()
-		sample.merge_vcfs()
+		# sample.phase_genotypes_hiphase()
+		# sample.merge_vcfs()
 		# sample.phase_genotypes_whatshap()
-		# sample.phase_genotypes_longphase()
-		# sample.merge_longphase_vcfs()
+		sample.phase_genotypes_longphase()
+		sample.merge_longphase_vcfs()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)

@@ -1,12 +1,13 @@
 import csv
 
-spechla_pacbio = "/Users/matt/Downloads/PacBio_hla_results.txt"
-spechla_ont = "/Users/matt/Downloads/ONT_hla_results.txt"
-hla_resolve = "/Users/matt/Downloads/hla_typing_results.csv"
-ihw_data_file = "/Users/matt/Downloads/IHW_samples.txt"
-output_file = "/Users/matt/Downloads/allele_calls.csv"
+spechla_pacbio = "PacBio_spechla_results.txt"
+spechla_ont = "ONT_spechla_results.txt"
+hla_resolve = "hla_typing_results.csv"
+ihw_data_file = "IHW_samples.txt"
+output_file = "allele_calls_comparison.csv"
 
 platforms = ["revio", "promethion"]
+
 genes = ["A", "B", "C", "DPA1", "DPB1", "DQA1", "DQB1", "DRB1"]
 samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
 
