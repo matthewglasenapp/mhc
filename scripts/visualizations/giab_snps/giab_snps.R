@@ -1,6 +1,8 @@
 # Load necessary library
 library(ggplot2)
 
+setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/giab_snps/")
+
 # Read the data
 data <- read.csv("HG002_gene_snps.csv")
 

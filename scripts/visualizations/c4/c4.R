@@ -7,7 +7,7 @@ setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/c4/")
 bed_data <- read_tsv("subset_exons.bed", col_names = c("chrom", "start", "end"))
 
 # per-base coverage file
-hla_per_base <- "/Users/matt/Documents/GitHub/mhc/clean_data/pacbio_mean_std_depth.rds"
+hla_per_base <- "/Users/matt/Documents/GitHub/mhc/clean_data/revio_mean_std_depth.rds"
 
 data <- readRDS(hla_per_base)
 

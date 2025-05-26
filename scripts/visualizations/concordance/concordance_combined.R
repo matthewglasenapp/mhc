@@ -152,7 +152,7 @@ plot3 <- ggplot(data1, aes(x = recall, y = precision, color = platform)) +
     legend.direction = "horizontal",
   )
 
-plot3
+plot2
 
 ggsave(filename = "concordance.pdf", plot = plot3)
 

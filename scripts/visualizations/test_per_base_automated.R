@@ -5,7 +5,7 @@ library(patchwork)
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/")
 
 # Example BED file with chr, start, stop, and name
-bed_file <- "regions3.bed"
+bed_file <- "probe_gaps.bed"
 annotations <- read.table(bed_file, header = FALSE, col.names = c("chr", "start", "stop", "name"))
 
 # Process annotation data
@@ -54,7 +54,7 @@ filter_range <- c(31262000, 31389999)
 # filter_range <- c(33064568, 33129084)
 
 # MHC Class III
-#filter_range <- c(31519479, 32407181)
+filter_range <- c(31519479, 32407181)
 
 
 # Process data for Revio and Promethion
