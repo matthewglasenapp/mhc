@@ -7,23 +7,23 @@ import time
 max_threads = 6
 
 # set input directory to the current working directory where the script should be run
-input_dir = os.getcwd()
+input_dir = os.path.join(os.getcwd(), "input_data")
 
-# Set the output directory to processed_data/
-output_dir = os.path.join(input_dir, "processed_data")
+# Set the output directory to ont/
+output_dir = os.path.join(os.getcwd(), "ont/")
 os.makedirs(output_dir, exist_ok=True)
 
 # Use reference fasta with no alternate contigs.
 reference_fasta = os.path.join(input_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
 
 tandem_repeat_bed = os.path.join(input_dir, "repeats_bed/human_GRCh38_no_alt_analysis_set.trf.bed")
-chr6_bed = os.path.join(input_dir, "chr6.bed")
+chr6_bed = os.path.join(input_dir, "reference/chr6.bed")
 
 # Set mapped chr6 reads threshold at which variant calling should not proceed
 min_reads_sample = 100
 
-barcode_config = "/hb/scratch/mglasena/test_ont/sample_barcode_arrangement.txt"
-barcode_file = "/hb/scratch/mglasena/test_ont/sample_barcodes.fa"
+barcode_config = os.path.join(input_dir, "ont_barcode_info/sample_barcode_arrangement.txt")
+barcode_file = os.path.join(input_dir, "ont_barcode_info/sample_barcodes.fa")
 basecalled_reads = "/hb/groups/cornejo_lab/HLA_hybrid_capture/06_25_24_R1041_LIG_Cornejo_EXP26/Cornejo/06_25_24_R1041_LIG_Cornejo_EXP26_1_drd0.7.2_sup5.0.0.bam"
 
 demux_prefix = "b2f9e1ada541ad6c3b470699dfbdd70ff26e092f_"
@@ -121,6 +121,7 @@ def rename_demux_bams():
 class Samples:
 	raw_bam_dir = os.path.join(output_dir, "raw_bam")
 	raw_fastq_dir = os.path.join(output_dir, "raw_fastq")
+	fastq_porechop_dir = os.path.join(output_dir, "fastq_porechop")
 	fastq_prowler_dir = os.path.join(output_dir, "fastq_prowler")
 	mapped_bam_dir = os.path.join(output_dir, "mapped_bam")
 	clair3_dir = os.path.join(output_dir, "clair3_vcf")
@@ -133,7 +134,7 @@ class Samples:
 		self.unmapped_bam = os.path.join(Samples.raw_bam_dir, self.sample_ID + ".bam")
 		self.read_group_string = read_group_string
 
-		for directory in [Samples.raw_bam_dir, Samples.raw_fastq_dir, Samples.fastq_prowler_dir, Samples.mapped_bam_dir, Samples.clair3_dir, Samples.sniffles_dir, Samples.whatshap_phased_vcf_dir, Samples.longphase_phased_vcf_dir]:
+		for directory in [Samples.raw_bam_dir, Samples.raw_fastq_dir, Samples.fastq_porechop_dir, Samples.fastq_prowler_dir, Samples.mapped_bam_dir, Samples.clair3_dir, Samples.sniffles_dir, Samples.whatshap_phased_vcf_dir, Samples.longphase_phased_vcf_dir]:
 			os.makedirs(directory, exist_ok=True)
 		
 		print(f"Processing Sample {sample_ID}!")
@@ -150,28 +151,29 @@ class Samples:
 		
 		subprocess.run(gatk_SamToFastq_cmd, shell=True, check=True)
 
-	def run_prowler_abi(self):
-		print("Removing adapters and barcodes with prowler_abi!")
+	def run_porechop_abi(self):
+		print("Removing adapters and barcodes with porechop_abi!")
 		
 		input_fastq = os.path.join(Samples.raw_fastq_dir, self.sample_ID + ".fastq.gz")
 		
-		print("prowler_abi input file: {}".format(input_fastq))
+		print("porechop_abi input file: {}".format(input_fastq))
 
 		prowler_threads = 4
 
-		output_fastq = os.path.join(Samples.fastq_prowler_dir, self.sample_ID + ".prowler.fastq")
+		output_fastq = os.path.join(Samples.fastq_porechop_dir, self.sample_ID + ".porechop.fastq")
 		
-		prowler_cmd = "prowler_abi --ab_initio -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = prowler_threads, output_file = output_fastq)
+		porechop_cmd = "porechop_abi --ab_initio -i {input_file} -t {threads} -o {output_file} --format fastq".format(input_file = input_fastq, threads = prowler_threads, output_file = output_fastq)
 
-		subprocess.run(prowler_cmd, shell=True, check=True)
+		subprocess.run(porechop_cmd, shell=True, check=True)
 
 	def trim_reads(self):
 		print("Trimiming reads with ProwlerTrimmer!")
 		
-		input_fastq_dir = Samples.fastq_prowler_dir + "/"
-		input_fastq_file = self.sample_ID + ".prowler.fastq"
+		input_fastq_dir = Samples.fastq_porechop_dir + "/"
+		input_fastq_file = self.sample_ID + ".porechop.fastq"
+		output_dir = Samples.fastq_prowler_dir
 
-		prowler_trimmer_cmd = 'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'.format(prowler_trimmer = prowler_trimmer, input_dir = input_fastq_dir, input_file = input_fastq_file, output_dir = input_fastq_dir)
+		prowler_trimmer_cmd = 'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'.format(prowler_trimmer = prowler_trimmer, input_dir = input_fastq_dir, input_file = input_fastq_file, output_dir = output_dir)
 
 		subprocess.run(prowler_trimmer_cmd, shell=True, check=True)
 
@@ -419,10 +421,10 @@ def main():
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
 	sample.convert_bam_to_fastq()
-	sample.run_prowler_abi()
-	sample.trim_reads()
-	sample.align_to_reference()
-	sample.mark_duplicates()
+	sample.run_porechop_abi()
+	# sample.trim_reads()
+	# sample.align_to_reference()
+	# sample.mark_duplicates()
 
 	# chr6_reads = sample.filter_reads()
 
@@ -431,6 +433,7 @@ def main():
 		# sample.call_structural_variants()
 		# sample.phase_genotypes_whatshap()
 	# 	sample.phase_genotypes_longphase()
+		# sample.merge_longphase_vcfs()
 	# 	end_time = time.time()
 	# 	elapsed_time = end_time - start_time
 	# 	minutes, seconds = divmod(elapsed_time,60)

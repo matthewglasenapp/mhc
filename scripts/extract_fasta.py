@@ -29,29 +29,19 @@ stop_codons = ["TAA", "TAG", "TGA"]
 
 config = {
 	"revio_hiphase": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_hiphase/",
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_hiphase/",
 		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz",
-		"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.hiphase.json"
+		"phased_genes": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/haploblocks/phased_genes.hiphase.json"
 	}
-	# "revio_longphase": {
-	# 	"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
-	# 	"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
-	# 	"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.longphase.json"
-	# },
-	# "revio_whatshap": {
-	# 	"vcf_dir": "/hb/scratch/mglasena/test_minimap/processed_data/phased_vcf_whatshap/",
-	# 	"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
-	# 	"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.whatshap.json"
-	# }
+	"revio_longphase": {
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_longphase/",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
+		"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.longphase.json"
+	},
 	# "promethion_longphase": {
-	#     "vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_longphase/",
+	#     "vcf_dir": "/hb/groups/cornejo_lab/matt/ont_capture/processed_data/phased_vcf_longphase/",
 	#     "vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz",
-	#     "phased_genes": "/hb/scratch/mglasena/delete/phased_genes.promethion.json"
-	# },
-	# "promethion_whatshap": {
-	#     "vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap/",
-	#     "vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz",
-	#     "phased_genes": "/hb/scratch/mglasena/delete/phased_genes.promethion.json"
+	#     "phased_genes": "/hb/groups/cornejo_lab/matt/ont_capture/processed_data/haploblocks/phased_genes.promethion.json"
 	# }
 }
 

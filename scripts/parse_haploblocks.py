@@ -4,7 +4,6 @@ import json
 import pysam
 from joblib import Parallel, delayed
 
-#phasers = ["longphase", "hiphase", "whatshap", "promethion"]
 phasers = ["longphase", "hiphase", "whatshap"]
 
 output_dir = "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/haploblocks/"
@@ -12,38 +11,27 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Config for each tool
 config = {
-	"hiphase": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_hiphase/",
-		"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_hiphase/",
+	"hiphase_revio": {
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_hiphase/",
+		"haploblock_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_hiphase/",
 		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz",
 		"haploblock_suffix": ".phased.blocks.txt",
 		"haploblock_parse": lambda fields: ("chr6", int(fields[4]) - 1, int(fields[5]))
 	},
-	"whatshap": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_whatshap/",
-		"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_whatshap/",
-		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
-		"haploblock_suffix": ".phased.haploblocks.txt",
-		"haploblock_parse": lambda fields: (fields[1], int(fields[3]) - 1, int(fields[4]))
-	},
-	"promethion": {
-		# "vcf_dir": "/hb/scratch/mglasena/MHC/genotypes/promethion/",
-		# "haploblock_dir": "/hb/scratch/mglasena/MHC/scripts/haploblocks/",
-		# "vcf_suffix": ".hg38.promethion.phased.vcf.gz",
-		# "haploblock_suffix": "_promethion_haploblocks.tsv",
-		"vcf_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap",
-		"haploblock_dir": "/hb/scratch/mglasena/test_ont/processed_data/phased_vcf_whatshap",
-		"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz",
+	"longphase_revio": {
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_longphase/",
+		"haploblock_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_longphase/",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
 		"haploblock_suffix": ".phased.haploblocks.txt",
 		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
 	},
-	"longphase": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
-		"haploblock_dir": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/phased_vcf_longphase/",
-		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.vcf.gz",
-		"haploblock_suffix": ".phased.haploblocks.txt",
-		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
-		}
+	# "longphase_promethion": {
+	# 	"vcf_dir": "/hb/groups/cornejo_lab/matt/ont_capture/processed_data/phased_vcf_longphase/",
+	# 	"haploblock_dir": "/hb/groups/cornejo_lab/matt/ont_capture/processed_data/phased_vcf_longphase/",
+	# 	"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz",
+	# 	"haploblock_suffix": ".phased.haploblocks.txt",
+	# 	"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
+	# }
 }
 
 #genes_bed = "hla_captured_genes.bed"

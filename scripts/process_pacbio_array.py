@@ -39,10 +39,10 @@ Script Details:
 """
 
 # set input directory to the current working directory where the script should be run
-input_dir = os.getcwd()
+input_dir = os.path.join(os.getcwd(), "input_data")
 
-# Set the output directory to processed_data/
-output_dir = os.path.join(input_dir, "processed_data")
+# Set the output directory to pacbio/
+output_dir = os.path.join(os.getcwd(), "pacbio")
 os.makedirs(output_dir, exist_ok=True)
 
 # Input file paths
@@ -462,7 +462,7 @@ class Samples:
 		print("\n\n")
 
 	# Merge phased SNV (DeepVariant), tandem repeat (TRGT), and structural variant (pbsv) VCFs with bcftools concat 
-	def merge_vcfs(self):
+	def merge_hiphase_vcfs(self):
 		print("Merging phased DeepVariant, pbsv, and TRGT VCF files!")
 
 		input_snv = os.path.join(Samples.hiphase_phased_vcf_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.phased.SNV.vcf.gz")
@@ -654,7 +654,7 @@ def main():
 		sample.call_structural_variants_sniffles()
 		# sample.genotype_tandem_repeats()
 		# sample.phase_genotypes_hiphase()
-		# sample.merge_vcfs()
+		# sample.merge_hiphase_vcfs()
 		# sample.phase_genotypes_whatshap()
 		sample.phase_genotypes_longphase()
 		sample.merge_longphase_vcfs()
