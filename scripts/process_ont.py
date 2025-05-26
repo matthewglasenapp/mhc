@@ -171,7 +171,7 @@ class Samples:
 		
 		input_fastq_dir = Samples.fastq_porechop_dir + "/"
 		input_fastq_file = self.sample_ID + ".porechop.fastq"
-		output_dir = Samples.fastq_prowler_dir
+		output_dir = Samples.fastq_prowler_dir + "/"
 
 		prowler_trimmer_cmd = 'python3 {prowler_trimmer} -i {input_dir} -f {input_file} -o {output_dir} -m "D" -q 20'.format(prowler_trimmer = prowler_trimmer, input_dir = input_fastq_dir, input_file = input_fastq_file, output_dir = output_dir)
 
@@ -420,20 +420,20 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	sample.convert_bam_to_fastq()
-	sample.run_porechop_abi()
+	# sample.convert_bam_to_fastq()
+	# sample.run_porechop_abi()
 	# sample.trim_reads()
-	# sample.align_to_reference()
-	# sample.mark_duplicates()
+	sample.align_to_reference()
+	sample.mark_duplicates()
 
 	# chr6_reads = sample.filter_reads()
 
 	# if chr6_reads > min_reads_sample:
-		# sample.call_variants()
-		# sample.call_structural_variants()
-		# sample.phase_genotypes_whatshap()
+	# 	sample.call_variants()
+	# 	sample.call_structural_variants()
+	# 	sample.phase_genotypes_whatshap()
 	# 	sample.phase_genotypes_longphase()
-		# sample.merge_longphase_vcfs()
+	# 	sample.merge_longphase_vcfs()
 	# 	end_time = time.time()
 	# 	elapsed_time = end_time - start_time
 	# 	minutes, seconds = divmod(elapsed_time,60)
