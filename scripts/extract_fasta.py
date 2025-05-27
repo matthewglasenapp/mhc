@@ -4,8 +4,8 @@ import subprocess
 import pysam
 
 vcf2fasta_script = "/hb/scratch/mglasena/vcf2fasta/vcf2fasta.py"
-reference_genome = "/hb/groups/cornejo_lab/matt/pacbio_capture/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
-gff_dir = "/hb/groups/cornejo_lab/matt/pacbio_capture/hla_gff/"
+reference_genome = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa"
+gff_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hla_gff/"
 # feature = "gene"
 features = ["CDS", "gene"]
 
@@ -16,8 +16,7 @@ samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", 
 genes_of_interest = ["HLA-A", "HLA-B", "HLA-C"]
 
 output_file = "fasta_dict.json"
-input_dir = os.getcwd()
-base_output_dir = "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data"
+base_output_dir = "/hb/groups/cornejo_lab/matt/hla_capture/haplotypes/"
 filtered_vcf_dir = os.path.join(base_output_dir, "vcf2fasta_vcf")
 fasta_dir = os.path.join(base_output_dir, "fasta_haplotypes")
 os.makedirs(filtered_vcf_dir, exist_ok=True)
@@ -29,20 +28,20 @@ stop_codons = ["TAA", "TAG", "TGA"]
 
 config = {
 	"revio_hiphase": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_hiphase/",
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/phased_vcf_hiphase/",
 		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz",
-		"phased_genes": "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/haploblocks/phased_genes.hiphase.json"
-	}
-	"revio_longphase": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_longphase/",
-		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
-		"phased_genes": "/hb/scratch/mglasena/delete/phased_genes.longphase.json"
+		"phased_genes": "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/phased_genes.hiphase_revio.json"
 	},
-	# "promethion_longphase": {
-	#     "vcf_dir": "/hb/groups/cornejo_lab/matt/ont_capture/processed_data/phased_vcf_longphase/",
-	#     "vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.vcf.gz",
-	#     "phased_genes": "/hb/groups/cornejo_lab/matt/ont_capture/processed_data/haploblocks/phased_genes.promethion.json"
-	# }
+	"revio_longphase": {
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/phased_vcf_longphase/",
+		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
+		"phased_genes": "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/phased_genes.longphase_revio.json"
+	},
+	"promethion_longphase": {
+	    "vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/ont/phased_vcf_longphase/",
+	    "vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz",
+	    "phased_genes": "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/phased_genes.longphase_promethion.json"
+	}
 }
 
 def get_gff_files():
@@ -219,7 +218,6 @@ def main():
 
 	parse_fastas()
 	write_fasta_dict()
-
 
 if __name__ == "__main__":
 	main()

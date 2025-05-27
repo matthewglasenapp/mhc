@@ -4,38 +4,35 @@ import json
 import pysam
 from joblib import Parallel, delayed
 
-phasers = ["longphase", "hiphase", "whatshap"]
+phasers = ["longphase_revio", "longphase_promethion", "hiphase_revio"]
 
-output_dir = "/hb/groups/cornejo_lab/matt/pacbio_capture/processed_data/haploblocks/"
+output_dir = "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/"
 os.makedirs(output_dir, exist_ok=True)
 
 # Config for each tool
 config = {
 	"hiphase_revio": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_hiphase/",
-		"haploblock_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_hiphase/",
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/phased_vcf_hiphase/",
 		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz",
 		"haploblock_suffix": ".phased.blocks.txt",
 		"haploblock_parse": lambda fields: ("chr6", int(fields[4]) - 1, int(fields[5]))
 	},
 	"longphase_revio": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_longphase/",
-		"haploblock_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/processed_data/phased_vcf_longphase/",
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/phased_vcf_longphase/",
 		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
 		"haploblock_suffix": ".phased.haploblocks.txt",
 		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
 	},
-	# "longphase_promethion": {
-	# 	"vcf_dir": "/hb/groups/cornejo_lab/matt/ont_capture/processed_data/phased_vcf_longphase/",
-	# 	"haploblock_dir": "/hb/groups/cornejo_lab/matt/ont_capture/processed_data/phased_vcf_longphase/",
-	# 	"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.phased.vcf.gz",
-	# 	"haploblock_suffix": ".phased.haploblocks.txt",
-	# 	"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
-	# }
+	"longphase_promethion": {
+		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/ont/phased_vcf_longphase/",
+		"vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz",
+		"haploblock_suffix": ".phased.haploblocks.txt",
+		"haploblock_parse": lambda fields: (fields[1], int(fields[3]), int(fields[4]))
+	}
 }
 
 #genes_bed = "hla_captured_genes.bed"
-genes_bed = "/hb/groups/cornejo_lab/matt/pacbio_capture/reference/parse_haploblocks_bed.bed"
+genes_bed = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/parse_haploblocks_bed.bed"
 
 # "HG01891"
 samples = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "IHW09021", "IHW09049", "IHW09071", "IHW09117", "IHW09118", "IHW09122", "IHW09125", "IHW09175", "IHW09198", "IHW09200", "IHW09224", "IHW09245", "IHW09251", "IHW09359", "IHW09364", "IHW09409", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
@@ -94,7 +91,7 @@ def load_heterozygous_variants(params):
 def parse_haploblocks(sample, het_sites, params):
 	haploblock_list = []
 
-	haploblock_file = os.path.join(params["haploblock_dir"], f"{sample}{params['haploblock_suffix']}")
+	haploblock_file = os.path.join(params["vcf_dir"], f"{sample}{params['haploblock_suffix']}")
 
 	print(f"Parsing {sample} haploblock file!")
 

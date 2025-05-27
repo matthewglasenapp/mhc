@@ -4,7 +4,7 @@ import edlib
 from concurrent.futures import ProcessPoolExecutor
 import multiprocessing
 
-reference_file = "hla_nuc.fasta"
+reference_file = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/IPD_IMGT/hla_nuc.fasta"
 query_file = "HLA_Class_I_haplotypes.fa"
 output_csv = "hla_typing_results.csv"
 
@@ -41,9 +41,9 @@ def match_query_sequence(gene, query_sequence, alleles, n=3):
 
 # Worker function to match a query haplotype sequence to the best-matching reference allele.
 def run_match_task(args):
-	sample, platform, gene, haplotype, seq, reference_alleles = args
+	sample, tag, gene, haplotype, seq, reference_alleles = args
 	best_match = match_query_sequence(gene, seq, reference_alleles)
-	return (sample, platform, gene, haplotype, best_match)
+	return (sample, tag, gene, haplotype, best_match)
 
 # Parses a FASTA file containing haplotype sequences, comparing each sequence to all reference alleles using multiprocessing
 def process_fasta_to_csv(query_file, allele_db):
@@ -56,10 +56,12 @@ def process_fasta_to_csv(query_file, allele_db):
 		gene = query_name_fields[1]
 		gene_abr = gene.split("-")[1]
 		platform = query_name_fields[2]
+		phaser = query_name_fields[3]
 		haplotype = query_name_fields[4]
+		tag = f"{platform}_{phaser}"
 		seq = str(record.seq)
 		reference_alleles = allele_db[gene_abr]
-		tasks.append((sample, platform, gene_abr, haplotype, seq, reference_alleles))
+		tasks.append((sample, tag, gene_abr, haplotype, seq, reference_alleles))
 
 	with ProcessPoolExecutor(max_workers=multiprocessing.cpu_count()) as executor:
 		results = list(executor.map(run_match_task, tasks))
