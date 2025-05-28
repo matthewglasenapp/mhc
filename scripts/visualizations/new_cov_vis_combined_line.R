@@ -1,6 +1,7 @@
 library(tidyverse)
 library(ggplot2)
 library(patchwork)
+library(glue)  # for debug messages
 
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/")
 
@@ -16,8 +17,8 @@ region_configs <- list(
 
 # Plot titles
 region_titles <- c(
-  "MHC Class I", "MHC Class I", "MHC Class I",
-  "MHC Class II", "MHC Class II",
+  "MHC Class I", "MHC Class I (cont.)", "MHC Class I (cont.)",
+  "MHC Class II", "MHC Class II (cont.)",
   "MHC Class III"
 )
 
@@ -41,8 +42,20 @@ process_data <- function(data, filter_range) {
     filter(base >= filter_range[1], base <= filter_range[2])
 }
 
+# Debugging function
+debug_annotation_limits <- function(idx, annotations, y_limit) {
+  out_of_bounds <- annotations %>%
+    filter(rect_ymin > y_limit | rect_ymax > y_limit | text_y > y_limit)
+  if (nrow(out_of_bounds) > 0) {
+    message(glue("Plot {idx}: {nrow(out_of_bounds)} annotation(s) outside y_limit {y_limit}"))
+    print(out_of_bounds)
+  } else {
+    message(glue("Plot {idx}: all annotations within y_limit {y_limit}"))
+  }
+}
+
 # Plotting function
-make_plot <- function(bed_file, filter_range, use_boxes_only = FALSE, title_text = NULL, is_plot5 = FALSE) {
+make_plot <- function(bed_file, filter_range, use_boxes_only = FALSE, title_text = NULL, is_plot5 = FALSE, idx = NA) {
   annotations <- read.table(bed_file, header = FALSE, col.names = c("chr", "start", "stop", "name")) %>%
     select(start, stop, name) %>%
     mutate(midpoint = (start + stop) / 2, name = str_replace_all(name, "\\n", "\n"))
@@ -61,24 +74,56 @@ make_plot <- function(bed_file, filter_range, use_boxes_only = FALSE, title_text
     ) %>%
     mutate(platform = ifelse(platform == "revio_mean", "Revio", "PromethION"))
   
-  max_y <- max(combined_data$mean_depth)
-  rect_ymin <- max_y * 1.02
-  rect_ymax <- max_y * 1.07
-  text_y <- max_y * 1.09
+  raw_max_y <- max(combined_data$mean_depth)
+  capped <- use_boxes_only
   
-  # Plot base
+  if (capped) {
+    combined_data <- combined_data %>% mutate(mean_depth = pmin(mean_depth, 350))
+  }
+  
+  plot_max_y <- if (capped) 350 else raw_max_y
+  rect_height <- plot_max_y * 0.05
+  rect_ymin_base <- plot_max_y * 1.02
+  rect_ymax_base <- rect_ymin_base + rect_height
+  text_y_base <- rect_ymax_base + (plot_max_y * 0.01)
+  
+  if (!use_boxes_only) {
+    if (is_plot5) {
+      stagger_height <- rect_height * 1.5
+      annotations <- annotations %>%
+        mutate(
+          offset = (row_number() - 1) * stagger_height + 2,
+          rect_ymin = rect_ymin_base + offset,
+          rect_ymax = rect_ymin + rect_height,
+          text_y = text_y_base + offset
+        )
+    } else {
+      annotations <- annotations %>%
+        mutate(
+          rect_ymin = rect_ymin_base,
+          rect_ymax = rect_ymax_base,
+          text_y = text_y_base
+        )
+    }
+    # Updated y_limit now that annotations are finalized
+    y_limit <- max(max(combined_data$mean_depth), annotations$rect_ymax, annotations$text_y) * 1.05
+    debug_annotation_limits(idx, annotations, y_limit)
+  } else {
+    y_limit <- text_y_base + (plot_max_y * 0.05)
+  }
+  
   coverage_plot <- ggplot(combined_data, aes(x = base, y = mean_depth, color = platform, fill = platform))
   
-  # Background grey boxes (for Class III)
+  # Grey boxes behind everything
   if (use_boxes_only) {
     coverage_plot <- coverage_plot +
       geom_rect(data = annotations,
-                aes(xmin = start, xmax = stop, ymin = 0, ymax = text_y * 1.1),
+                aes(xmin = start, xmax = stop, ymin = 0, ymax = text_y_base),
                 inherit.aes = FALSE,
                 fill = "grey90", color = NA)
   }
   
-  # Add main coverage layers
+  # Main coverage layers
   coverage_plot <- coverage_plot +
     geom_area(alpha = 0.2, position = "identity") +
     geom_line(linewidth = 0.05) +
@@ -91,7 +136,8 @@ make_plot <- function(bed_file, filter_range, use_boxes_only = FALSE, title_text
       labels = function(x) sprintf("%.2f", x / 1e6),
       breaks = pretty(filter_range)
     ) +
-    scale_y_continuous(limits = c(0, text_y * 1.1), expand = c(0, 0)) +
+    scale_y_continuous(limits = c(0, y_limit), expand = c(0, 0)) +
+    coord_cartesian(clip = "off") +
     theme(
       panel.background = element_blank(),
       axis.line = element_line(colour = "black", linewidth = 0.3),
@@ -101,27 +147,10 @@ make_plot <- function(bed_file, filter_range, use_boxes_only = FALSE, title_text
       axis.title.x = element_text(size = 4, face = "bold"),
       axis.title.y = element_text(size = 4, face = "bold", angle = 0, hjust = 0.5, vjust = 0.5),
       legend.position = "none",
-      plot.margin = margin(10, 10, 6, 10)
+      plot.margin = margin(2, 6, 2, 6)
     )
   
-  # Annotation boxes and labels
   if (!use_boxes_only) {
-    if (is_plot5) {
-      height <- rect_ymax - rect_ymin
-      stagger_height <- height *1.5  # Adjust as needed (0.6–1.5 often good)
-      
-      annotations <- annotations %>%
-        mutate(
-          offset = (row_number() - 1) * stagger_height + 2,
-          rect_ymin = rect_ymin + offset,
-          rect_ymax = rect_ymin + height,
-          text_y = text_y + offset
-        )
-    } else {
-      annotations <- annotations %>%
-        mutate(rect_ymin = rect_ymin, rect_ymax = rect_ymax)
-    }
-    
     coverage_plot <- coverage_plot +
       geom_rect(data = annotations,
                 aes(xmin = start, xmax = stop, ymin = rect_ymin, ymax = rect_ymax),
@@ -129,10 +158,9 @@ make_plot <- function(bed_file, filter_range, use_boxes_only = FALSE, title_text
       geom_text(data = annotations,
                 aes(x = midpoint, y = text_y, label = name),
                 inherit.aes = FALSE,
-                size = 1.5, vjust = 0, color = "black", face = "bold")
+                size = 1.5, vjust = 0, color = "black")
   }
   
-  # Add optional title
   if (!is.null(title_text)) {
     coverage_plot <- coverage_plot +
       ggtitle(title_text) +
@@ -149,7 +177,8 @@ plots <- pmap(
     make_plot(config$bed, config$range,
               use_boxes_only = idx == 6,
               title_text = title,
-              is_plot5 = idx == 5)
+              is_plot5 = idx == 5,
+              idx = idx)
   }
 )
 
@@ -166,3 +195,7 @@ print(final_plot)
 
 # Save
 ggsave(filename = "coverage_plot.pdf", plot = final_plot, dpi = 600)
+
+ggsave("coverage_plot.png", plot = final_plot, dpi = 600, width = 6.5, units = "in")
+
+
