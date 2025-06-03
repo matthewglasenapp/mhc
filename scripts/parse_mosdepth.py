@@ -5,14 +5,12 @@ import json
 from statistics import mean, stdev
 
 root_dir = "/hb/groups/cornejo_lab/matt/hla_capture/coverage/"
-
 regions_file = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/mosdepth/mhc_regions.bed"
-
 output_dir = "/hb/groups/cornejo_lab/matt/hla_capture/coverage/results/"
+biotype_dict_file = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/mosdepth/biotype_dict.json"
 os.makedirs(output_dir, exist_ok=True)
 
 threads = 4
-
 # Coordinates for per-base files
 start_pos = 28000000
 stop_pos = 34000000
@@ -29,7 +27,25 @@ sample_list = ['HG002', 'HG003', 'HG004', 'HG005', 'HG01106', 'HG01258', 'HG0192
 # Original 16 samples
 sample_list_hprc = ["HG002", "HG003", "HG004", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309", "NA24694", "NA24695"]
 
-biotype_dict_file = "/hb/scratch/mglasena/MHC/scripts/biotype_dict.json"
+def parse_sample_and_platform(filepath):
+	basename = os.path.basename(filepath)
+
+	if "dedup" in basename:
+		platform = "revio"
+		sample = basename.split(".dedup")[0]
+	elif "porechop" in basename:
+		platform = "promethion"
+		sample = basename.split(".porechop")[0]
+	elif "_revio_" in basename:
+		platform = "revio"
+		sample = basename.split("_revio_")[0]
+	elif "_promethion_" in basename:
+		platform = "promethion"
+		sample = basename.split("_promethion_")[0]
+	else:
+		raise ValueError(f"Unknown platform in filename: {basename}")
+
+	return sample, platform
 
 def parse_mosdepth_per_base(output_file):
 	# 1. Get per-base files
@@ -43,8 +59,8 @@ def parse_mosdepth_per_base(output_file):
 
 	# 2. Parse per-base files
 	for file in per_base_file_list:
-		prefix = file.split(".per-base.bed.gz")[0].split("/")[-1]
-		intermediate_output_file = "{}{}_per_base.tsv".format(output_dir, prefix)
+		sample, platform = parse_sample_and_platform(file)
+		intermediate_output_file = os.path.join(output_dir, f"{sample}_{platform}_per_base.tsv")
 		
 		with gzip.open(file, "rt") as f1, open(intermediate_output_file, "w") as f2:
 			for line in f1:
@@ -79,8 +95,8 @@ def parse_mosdepth_per_base(output_file):
 	
 	for file in sorted_file_list:
 		with open(file, "r") as f:
-			sample = file.split("/")[-1].split("per_base.tsv")[0].split("_")[0]
-			platform = file.split("/")[-1].split("per_base.tsv")[0].split("_")[1]
+			sample, platform = parse_sample_and_platform(file)
+
 
 			for line in f:
 				base, depth = line.strip().split("\t")
