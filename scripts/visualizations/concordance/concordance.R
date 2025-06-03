@@ -61,12 +61,13 @@ figure <- ggplot(data_long, aes(x = sample, y = value, shape = metric, color = m
     axis.text.x = element_text(hjust = 0.5),
     strip.text = element_text(size = 12, face = "bold"),
     legend.title = element_text(size = 12),
-    legend.text = element_text(size = 10)
+    legend.text = element_text(size = 10),
+    legend.position = "top"
   )
 
 # Display the plot
 figure
 
-ggsave(filename = "concordance.pdf", plot = figure, width = 169, units = "mm")
-ggsave(filename = "concordance.png", plot = figure, width = 169, units = "mm")
+ggsave(filename = "concordance.pdf", plot = figure)
+ggsave(filename = "concordance.png", plot = figure)
 

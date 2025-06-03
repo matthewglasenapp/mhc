@@ -4,11 +4,12 @@ import csv
 import json
 from statistics import mean, stdev
 
-root_dir = "/hb/scratch/mglasena/MHC/coverage/"
+root_dir = "/hb/groups/cornejo_lab/matt/hla_capture/coverage/"
 
-regions_file = "/hb/scratch/mglasena/MHC/scripts/mhc_regions.bed"
+regions_file = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/mosdepth/mhc_regions.bed"
 
-output_dir = "/hb/scratch/mglasena/MHC/results/"
+output_dir = "/hb/groups/cornejo_lab/matt/hla_capture/coverage/results/"
+os.makedirs(output_dir, exist_ok=True)
 
 threads = 4
 

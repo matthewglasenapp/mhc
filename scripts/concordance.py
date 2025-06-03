@@ -3,18 +3,28 @@ import csv
 
 threads = 8
 
-samples = ["HG002", "HG003", "HG004", "HG005"]
+samples = ["HG002", "HG003", "HG004", "HG005", "NA24694", "NA24695"]
 platforms = ["revio", "promethion"]
 types = ["snp", "indel"]
 
-root_dir = "/hb/scratch/mglasena/MHC/concordance/"
-input_vcf_dir = "/hb/scratch/mglasena/MHC/genotypes/"
-hap_py_input_dir = root_dir + "hap_py_input/"
+giab_names = {
+	"NA24694": "HG006",
+	"NA24695": "HG007",
+	"HG002": "HG002",
+	"HG003": "HG003",
+	"HG004": "HG004",
+	"HG005": "HG005"
+}
+
+root_dir = "/hb/groups/cornejo_lab/matt/hla_capture/"
+revio_input_vcf_dir = "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/deepvariant_vcf/"
+promethion_input_vcf_dir = "/hb/groups/cornejo_lab/matt/hla_capture/ont/clair3_vcf/"
+hap_py_input_dir = root_dir + "input_data/hap_py_input/"
 giab_benchmark_dir = root_dir + "GIAB_benchmark/"
 output_dir = root_dir + "hap_py_results/"
 reference_fasta = hap_py_input_dir + "Homo_sapiens.GRCh38.dna.primary_assembly_renamed.fa"
-#regions_file = hap_py_input_dir + "merged_hla_legacy.bed"
-regions_file = hap_py_input_dir + "c4b.bed"
+regions_file = hap_py_input_dir + "merged_hla_legacy.bed"
+# regions_file = hap_py_input_dir + "c4b.bed"
 
 # Path to rtg tools
 rtg_path = "/hb/home/mglasena/.conda/envs/happy/bin/rtg"
@@ -38,16 +48,18 @@ def run_happy(platform, sample):
 	os.system("mkdir -p {}".format(outdir))
 	output_prefix = outdir + platform + "_" + sample
 	if platform == "revio":
-		query_vcf = input_vcf_dir + platform + "/" + sample + ".hg38." + platform + ".vcf.gz"
+		query_vcf = revio_input_vcf_dir + sample + ".dedup.trimmed.hg38.chr6.SNV.vcf.gz"
 	elif platform == "promethion":
-		query_vcf = input_vcf_dir + platform + "/" + sample + "/merge_output.vcf.gz"
+		query_vcf = promethion_input_vcf_dir + sample + "/merge_output.vcf.gz"
 
-	truth_vcf = giab_benchmark_dir + sample + "/" + sample + "_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
+	truth_sample = giab_names[sample]
 
-	if sample == "HG002" or sample == "HG003" or sample == "HG004":
-		confident_regions = giab_benchmark_dir + sample + "/" + sample + "_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed"
+	truth_vcf = giab_benchmark_dir + truth_sample + "/" + truth_sample + "_GRCh38_1_22_v4.2.1_benchmark.vcf.gz"
+
+	if sample in ["HG002", "HG003", "HG004"]:
+		confident_regions = giab_benchmark_dir + truth_sample + "/" + truth_sample + "_GRCh38_1_22_v4.2.1_benchmark_noinconsistent.bed"
 	else:
-		confident_regions = giab_benchmark_dir + sample + "/" + sample + "_GRCh38_1_22_v4.2.1_benchmark.bed"
+		confident_regions = giab_benchmark_dir + truth_sample + "/" + truth_sample + "_GRCh38_1_22_v4.2.1_benchmark.bed"
 
 	run_happy = "hap.py {} {} -f {} -R {} -r {} -o {} --engine vcfeval --engine-vcfeval-path {} --engine-vcfeval-template {} --threads {}".format(
 		truth_vcf, query_vcf, confident_regions, regions_file, reference_fasta, output_prefix, rtg_path, rtg_template, threads)
