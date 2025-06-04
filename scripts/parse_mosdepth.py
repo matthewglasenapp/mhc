@@ -139,20 +139,31 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 		biotype_dict = json.load(json_file)
 
 	for platform in platforms:
-		get_regions_file_paths = "find {} -type f -name '*.regions.bed.gz*' | grep {} | grep -v 'csi' > regions_files".format(root_dir, platform)
-		get_thresholds_file_paths = "find {} -type f -name '*.thresholds.bed.gz*' | grep {} | grep -v 'csi' > thresholds_files".format(root_dir, platform)
-		
+		get_regions_file_paths = f"find {root_dir} -type f -name '*.regions.bed.gz' | grep -v 'csi' > regions_files"
+		get_thresholds_file_paths = f"find {root_dir} -type f -name '*.thresholds.bed.gz' | grep -v 'csi' > thresholds_files"
+
 		os.system(get_thresholds_file_paths)
 		os.system(get_regions_file_paths)
 
-		with open("regions_files", "r") as f1, open("thresholds_files","r") as f2:
-			file_list = zip(sorted(f1.read().splitlines()),sorted(f2.read().splitlines()))
+		with open("regions_files", "r") as f1, open("thresholds_files", "r") as f2:
+			regions_lines = sorted(f1.read().splitlines())
+			thresholds_lines = sorted(f2.read().splitlines())
+			print("🧪 Number of regions files found:", len(regions_lines))
+			print("🧪 Number of thresholds files found:", len(thresholds_lines))
+			file_list = zip(regions_lines, thresholds_lines)
 
 		os.system("rm regions_files")
 		os.system("rm thresholds_files")
 		
 		for regions_file, thresholds_file in file_list:
-			sample_name = regions_file.split("/")[-1].split(".")[0].split("_")[0]
+			print(f"🗂 Processing regions file: {regions_file}")
+			print(f"🗂 Processing thresholds file: {thresholds_file}")
+
+			sample_name, platform = parse_sample_and_platform(regions_file)
+
+			if sample_name not in sample_list:
+				print(f"⚠️ Skipping unrecognized sample: {sample_name}")
+				continue
 
 			with gzip.open(regions_file, "rt") as f1, gzip.open(thresholds_file,"rt") as f2:
 				regions = f1.read().splitlines()
@@ -191,6 +202,10 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 						transcript_ID = name.split("_")[2]
 						parent_gene = name.split("_",3)[3]
 
+					if platform not in platforms:
+						print(f"⚠️ Platform '{platform}' not recognized")
+						continue
+
 					if not ID in coverage_dict[platform][record_type]:
 						coverage_dict[platform][record_type][ID] = {
 							"name": name,
@@ -206,6 +221,8 @@ def parse_mosdepth_regions_thresholds(output_json_file):
 						"prop_20x": prop_20x,
 						"prop_30x": prop_30x
 					}
+
+					print(f"✅ Added {record_type} {ID} for sample={sample_name}, platform={platform}")
 
 					current_record = coverage_dict[platform][record_type][ID]
 					if record_type == "exon":
@@ -244,7 +261,7 @@ def write_results():
 						writer.writerow(row)
 
 def main():
-	parse_mosdepth_per_base(output_dir + "hla_per_base.csv")
+	# parse_mosdepth_per_base(output_dir + "hla_per_base.csv")
 	parse_mosdepth_regions_thresholds(output_dir + "coverage_dict.json")
 	write_results()
 
