@@ -8,9 +8,9 @@ from Bio import SeqIO
 
 samples = ["HG002", "HG005", "HG01106", "HG01258", "HG01928", "HG02055", "HG02630", "HG03492", "HG03579", "NA19240", "NA20129", "NA21309"]
 genes = ["HLA-A", "HLA-B", "HLA-C"]
-platforms = ["revio_hiphase", "revio_longphase", "revio_whatshap"]
-fasta_dict = "/hb/scratch/mglasena/test_vcf2fasta/fasta_dict.json"
-hprc_fasta_dir = "/hb/scratch/mglasena/hprc_hla_beds/"
+platforms = ["revio_hiphase", "revio_longphase", "promethion_longphase"]
+fasta_dict = "fasta_dict.json"
+hprc_fasta_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hprc/"
 feature = "gene"
 
 HPRC_dict = dict()

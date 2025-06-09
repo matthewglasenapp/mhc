@@ -8,7 +8,8 @@ genes = ["HLA-A", "HLA-B", "HLA-C"]
 
 hprc_ensembl_fasta_dir = "/hb/scratch/mglasena/hprc_ensembl/"
 hprc_ensembl_gff3_dir = "/hb/scratch/mglasena/hprc_gff3/"
-output_bed_dir = "/hb/scratch/mglasena/hprc_hla_beds/"
+# output_bed_dir = "/hb/scratch/mglasena/hprc_hla_beds/"
+output_bed_dir = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/hprc/"
 os.makedirs(output_bed_dir, exist_ok=True)
 
 sample_to_gca = {

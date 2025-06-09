@@ -123,5 +123,87 @@ figure2
 ggsave(filename = "combined_heat_map.png", plot = figure2)
 ggsave(filename = "combined_heat_map.pdf", plot = figure2)
 
+#==============================================================================
+library(tidyr)
+library(ggplot2)
+library(viridis)
+
+setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/heat_map/")
+
+# Load data
+revio <- read.table("revio_gene_coverage_depth.tsv", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+prom <- read.table("promethion_gene_coverage_depth.tsv", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# Define desired sample order (reverse of column names, excluding first column)
+sample_order <- colnames(revio)[-1]
+
+# Helper to reshape one table
+reshape_for_heatmap <- function(data, platform_name, sample_order) {
+  gene_names <- make.unique(data[[1]])  # ensure unique gene names
+  rownames(data) <- gene_names
+  gene_order <- rev(gene_names)
+  data <- data[, -1]
+  mat <- t(as.matrix(data))
+  mat[mat > 50] <- 50
+  df <- as.data.frame(mat)
+  df$Sample <- rownames(mat)
+  df_long <- pivot_longer(df, cols = -Sample, names_to = "Gene", values_to = "Depth")
+  df_long$Platform <- platform_name
+  df_long$Depth <- as.numeric(df_long$Depth)
+  df_long$Sample <- factor(df_long$Sample, levels = sample_order)  # enforce x-axis order
+  df_long$Gene <- factor(df_long$Gene, levels = gene_order)        # enforce y-axis order
+  df_long
+}
+
+# Reshape each dataset
+revio_long <- reshape_for_heatmap(revio, "Revio", sample_order)
+prom_long <- reshape_for_heatmap(prom, "PromethION", sample_order)
+
+# Plot for Revio
+plot_revio <- ggplot(revio_long, aes(x = Sample, y = Gene, fill = Depth)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "#0072B2") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 7, angle = 45, hjust = 1, vjust = 1),
+    axis.title.x = element_text(size=7, face = "bold"),
+    axis.title.y = element_text(size=7, face="bold"),
+    axis.text.y = element_text(size = 5),
+    legend.title = element_text(size = 6),
+    legend.text = element_text(size = 7),
+    legend.key.height = unit(1.5, "cm"),
+    legend.key.width = unit(0.25, "cm"),
+    legend.position = "right"
+  ) +
+  labs(x = "Samples", y = "MHC Genes", fill = "Mean\nCoverage\nDepth")
+
+# Plot for PromethION
+plot_prom <- ggplot(prom_long, aes(x = Sample, y = Gene, fill = Depth)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient(low = "white", high = "#0072B2") + 
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 7, angle = 45, hjust = 1, vjust = 1),
+    axis.title.x = element_text(size=7, face = "bold"),
+    axis.title.y = element_text(size=7, face="bold"),
+    axis.text.y = element_text(size = 5),
+    legend.title = element_text(size = 6),
+    legend.text = element_text(size = 7),
+    legend.key.height = unit(1.5, "cm"),
+    legend.key.width = unit(0.25, "cm"),
+    legend.position = "right"
+  ) +
+  labs(x = "Samples", y = "MHC Genes", fill = "Mean\nCoverage\nDepth")
+
+# Display both plots
+plot_prom
+plot_revio
+
+ggsave(filename = "revio_heat_map.pdf", plot = plot_revio)
+ggsave(filename = "promethion_heat_map.pdf", plot = plot_prom)
+
+#==============================================================================
+
+
 
 
