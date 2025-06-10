@@ -1,6 +1,7 @@
 library(tidyr)
 library(ggplot2)
 library(viridis)
+library(patchwork)
 
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/heat_map/")
 
@@ -161,49 +162,112 @@ prom_long <- reshape_for_heatmap(prom, "PromethION", sample_order)
 
 # Plot for Revio
 plot_revio <- ggplot(revio_long, aes(x = Sample, y = Gene, fill = Depth)) +
-  geom_tile(color = "white") +
+  geom_tile(color = "white") + theme(panel.background = element_rect(fill = "white")) + 
   scale_fill_gradient(low = "white", high = "#0072B2") +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(size = 7, angle = 45, hjust = 1, vjust = 1),
-    axis.title.x = element_text(size=7, face = "bold"),
-    axis.title.y = element_text(size=7, face="bold"),
-    axis.text.y = element_text(size = 5),
+    axis.text.x = element_text(size = 4, angle = 30, hjust = 1, vjust = 1),
+    axis.text.y = element_text(size = 4),
+    axis.title.x = element_text(size = 7, face = "bold"),
+    axis.title.y = element_text(size = 7, face = "bold"),
+    
+    # 🔧 Make actual ticks visible and same for both axes
+    axis.ticks = element_line(color = "black", size = 0.2),
+    axis.ticks.length = unit(0.1, "cm"),
+    
+    # Optional: remove gridlines if redundant
+    panel.grid = element_blank(),
+    
+    # Legend
     legend.title = element_text(size = 6),
     legend.text = element_text(size = 7),
     legend.key.height = unit(1.5, "cm"),
     legend.key.width = unit(0.25, "cm"),
     legend.position = "right"
-  ) +
-  labs(x = "Samples", y = "MHC Genes", fill = "Mean\nCoverage\nDepth")
+  )
 
 # Plot for PromethION
 plot_prom <- ggplot(prom_long, aes(x = Sample, y = Gene, fill = Depth)) +
-  geom_tile(color = "white") +
+  geom_tile(color = "white") + theme(panel.background = element_rect(fill = "white")) + 
   scale_fill_gradient(low = "white", high = "#0072B2") + 
   theme_minimal() +
   theme(
-    axis.text.x = element_text(size = 7, angle = 45, hjust = 1, vjust = 1),
-    axis.title.x = element_text(size=7, face = "bold"),
-    axis.title.y = element_text(size=7, face="bold"),
-    axis.text.y = element_text(size = 5),
+    axis.text.x = element_text(size = 4, angle = 30, hjust = 1, vjust = 1),
+    axis.text.y = element_text(size = 4),
+    axis.title.x = element_text(size = 7, face = "bold"),
+    axis.title.y = element_text(size = 7, face = "bold"),
+    
+    # 🔧 Make actual ticks visible and same for both axes
+    axis.ticks = element_line(color = "black", size = 0.2),
+    axis.ticks.length = unit(0.1, "cm"),
+    
+    # Optional: remove gridlines if redundant
+    panel.grid = element_blank(),
+    
+    # Legend
     legend.title = element_text(size = 6),
     legend.text = element_text(size = 7),
     legend.key.height = unit(1.5, "cm"),
     legend.key.width = unit(0.25, "cm"),
     legend.position = "right"
-  ) +
-  labs(x = "Samples", y = "MHC Genes", fill = "Mean\nCoverage\nDepth")
+  )
+
 
 # Display both plots
 plot_prom
 plot_revio
 
-ggsave(filename = "revio_heat_map.pdf", plot = plot_revio)
+#ggsave(filename = "revio_heat_map.pdf", plot = plot_revio)
 ggsave(filename = "promethion_heat_map.pdf", plot = plot_prom)
+#ggsave(filename = "revio_heat_map.png", plot = plot_revio)
+#ggsave(filename = "promethion_heat_map.png", plot = plot_prom)
 
 #==============================================================================
+library(patchwork)
 
+# Strip axis titles and legends from subplots
+plot_revio_clean <- plot_revio +
+  ggtitle("PacBio Revio") +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    legend.position = "none"
+  )
 
+plot_prom_clean <- plot_prom +
+  ggtitle("ONT PromethION") +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    legend.position = "none"
+  )
 
+# Stack plots with shared legend
+combined_plot <- (plot_revio_clean / plot_prom_clean) +
+  plot_layout(guides = "collect", heights = c(1, 1)) &
+  theme(
+    legend.position = "right",
+    legend.title = element_text(size = 6),
+    legend.text = element_text(size = 7),
+    legend.key.height = unit(1.5, "cm"),
+    legend.key.width = unit(0.25, "cm"),
+    plot.title = element_text(size = 7, face = "bold", hjust = 0.5)
+  )
 
+# Add global axis titles using patchwork annotation
+final_plot <- combined_plot +
+  plot_annotation(
+    title = NULL,
+    theme = theme(
+      plot.margin = margin(5, 5, 5, 5),
+      axis.title.x = element_text(size = 7, face = "bold", hjust = 0.5),
+      axis.title.y = element_text(size = 7, face = "bold", angle = 90, hjust = 0.5)
+    )
+  ) &
+  labs(x = "Samples", y = "MHC Genes")
+
+final_plot
+
+# Save
+ggsave("combined_heat_map.pdf", final_plot, width = 6.5, height = 9, units = "in")
+ggsave("combined_heat_map.png", final_plot, width = 6.5, height = 9, units = "in", dpi = 300)
