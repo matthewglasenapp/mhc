@@ -4,6 +4,8 @@ library(patchwork)
 
 setwd("/Users/matt/Documents/GitHub/mhc/scripts/visualizations/phase_heat_map/")
 
+exclude_drb5 <- TRUE
+
 # =====================
 # 1. BOX PLOT: NUM GENES
 # =====================
@@ -34,7 +36,7 @@ phased_data <- read_csv("/Users/matt/Documents/GitHub/mhc/scripts/visualizations
 
 p1 <- ggplot(phased_data, aes(x = x_group, y = num_genes, fill = x_group)) +
   geom_boxplot(alpha = 0.3, width = 0.3, outlier.shape = NA, color = "black") +
-  geom_jitter(aes(color = x_group), width = 0.15, height = 0, size = 2, alpha = 0.8) +
+  geom_jitter(aes(color = x_group), width = 0.15, height = 0, size = 1.5, alpha = 0.8) +
   scale_y_continuous(labels = scales::label_number()) +
   scale_fill_viridis_d(option = "D", begin = 0.1, end = 0.9) +
   scale_color_viridis_d(option = "D", begin = 0.1, end = 0.9) +
@@ -50,7 +52,7 @@ p1 <- ggplot(phased_data, aes(x = x_group, y = num_genes, fill = x_group)) +
 # ==============================
 
 # Load coverage matrix
-coverage_data <- read_csv("phase_map.hiphase.csv")
+coverage_data <- read_csv("phase_map.hiphase_revio.csv")
 colnames(coverage_data) <- gsub("\\.", "-", colnames(coverage_data))
 
 # Preserve ordering
@@ -62,7 +64,7 @@ df_coverage <- coverage_data %>%
   pivot_longer(cols = -sample, names_to = "Gene", values_to = "Value")
 
 # Load % coverage info
-incomplete <- read_csv("incomplete.hiphase.csv") %>%
+incomplete <- read_csv("incomplete.hiphase_revio.csv") %>%
   mutate(largest_haploblock = as.numeric(gsub("%", "", largest_haploblock)))
 
 # Join and compute percent_covered
@@ -74,17 +76,25 @@ df_coverage <- df_coverage %>%
     Gene = factor(Gene, levels = gene_order)
   )
 
+df_coverage_filtered <- if (exclude_drb5) {
+  df_coverage %>% filter(Gene != "HLA-DRB5")
+} else {
+  df_coverage
+}
+
 # Plot
-p2 <- ggplot(df_coverage, aes(x = Gene, y = sample, fill = percent_covered)) +
+p2 <- ggplot(df_coverage_filtered, aes(x = Gene, y = sample, fill = percent_covered)) +
   geom_tile(color = "white") +
   scale_fill_viridis_c(option = "D", direction = -1, na.value = "white",
-                       name = "% Covered") +
-  labs(x = "Gene", y = "Sample", title = "Gene Coverage by Largest Haploblock") +
+                       name = "Percent Gene\nCovered by\nLargest\nOverlapping\nHaploblock") +
+  labs(x = "Gene", y = "Sample") +
   theme_minimal() +
-  theme(axis.text.x = element_text(size = 8),
-        axis.text.y = element_text(size = 7),
+  theme(axis.text.x = element_text(size = 6, angle = 30, hjust = 1, vjust = 1.2),
+        axis.text.y = element_text(size = 6),
         legend.position = "right",
         panel.grid = element_blank(),
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 8),
         axis.ticks = element_blank())
 
 # ===========================
@@ -135,14 +145,16 @@ df_haplo <- df_edit %>%
 # Plot
 p3 <- ggplot(df_haplo, aes(x = Gene_hap, y = sample, fill = similarity)) +
   geom_tile(color = "white") +
-  geom_text(aes(label = label, color = text_color), size = 3, fontface = "bold", na.rm = TRUE) +
-  scale_fill_viridis_c(option = "D", direction = -1, na.value = "grey", name = "Percent\nIdentity") +
+  geom_text(aes(label = label, color = text_color), size = 2.5, fontface = "bold", na.rm = TRUE) +
+  scale_fill_viridis_c(option = "D", direction = -1, na.value = "grey", name = "Percent\nSequence\nIdentity") +
   scale_color_identity() +
   labs(x = "Gene Haplotype", y = "Sample") +
   theme_minimal() +
   theme(
     axis.text.x = element_text(size = 8),
     axis.text.y = element_text(size = 7),
+    legend.text = element_text(size = 7),
+    legend.title = element_text(size = 8),
     axis.ticks = element_blank(),
     panel.grid = element_blank(),
     legend.position = "right"
@@ -150,8 +162,8 @@ p3 <- ggplot(df_haplo, aes(x = Gene_hap, y = sample, fill = similarity)) +
 # =====================
 # COMBINE AND SAVE
 # =====================
-compound <- p1 / p2 / p3 + plot_layout(ncol = 1, heights = c(1.2, 1, 1.2))
-ggsave("compound_plot_fixed.pdf", compound, width = 10, height = 14)
-#ggsave("compound_plot_fixed.png", compound, width = 10, height = 14)
+compound <- p1 / p2 / p3 + plot_layout(ncol = 1, heights = c(1, 2, 1))
+ggsave("compound_plot_fixed.pdf", compound, width = 6.5, height = 9)
+ggsave("compound_plot_fixed.png", compound, width = 6.5, height = 9)
 
 print(compound)
