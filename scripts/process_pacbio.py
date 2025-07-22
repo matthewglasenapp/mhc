@@ -47,11 +47,18 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Input file paths
 
+# Pangenome graph reference info 
+reference_gbz="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.gbz"
+ref_paths="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
+
 # Use reference fasta with no alternate contigs.
 reference_fasta = os.path.join(input_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
 
 # DeepVariant sif file
 deepvariant_sif = os.path.join(input_dir, "deepvariant_sif/deepvariant.sif")
+
+# Path to vg install
+vg = "/hb/scratch/ogarci12/hybridcapture_pangenome/vg"
 
 # GRCh38 tandem repeat mask file for pbsv
 # Downloaded from https://github.com/PacificBiosciences/pbsv/blob/master/annotations/human_GRCh38_no_alt_analysis_set.trf.bed
@@ -242,7 +249,7 @@ class Samples:
 		print("\n\n")
 
 	# Align to GRCh38 reference genome with pbmm2
-	def align_to_reference(self):
+	def deprecated_align_to_reference(self):
 		print("Aligning reads to GRCh38 reference genome with minimap2!")
 		
 		input_fastq = os.path.join(Samples.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
@@ -270,6 +277,51 @@ class Samples:
 
 		print("Mapped bam written to: {}".format(output_bam))
 		print("\n\n")
+
+	def align_to_reference(self):
+		print("Aligning reads to pangenome reference genome with vg giraffe!")
+		
+		input_fastq = os.path.join(Samples.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
+
+		print("vg giraffe input file: {}".format(input_fastq))
+		
+		output_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pangenome.bam")
+
+		vg_threads = int(max_threads * 2 / 3)
+		samtools_threads = max_threads - vg_threads
+
+		vg_command = "{vg} giraffe -b hifi -Z {reference_gbz} -f {input_file} -p -P -o BAM --threads {vg_threads} --ref-paths {ref_paths} | samtools sort -@ {samtools_threads} -o {output_file}".format(vg = vg, reference_gbz = reference_gbz, input_file = input_fastq, vg_threads = vg_threads, ref_paths = ref_paths, samtools_threads = samtools_threads, output_file = output_bam)
+
+		index_bam = "samtools index {input_file}".format(input_file = output_bam)
+
+		subprocess.run(vg_command, shell=True, check=True)
+		subprocess.run(index_bam, shell=True, check=True)
+
+		# Reheader
+		temp_sam_1 = os.path.join(Samples.mapped_bam_dir, self.sample_ID + "_temp1.sam")
+		temp_sam_2 = os.path.join(Samples.mapped_bam_dir, self.sample_ID + "_temp2.sam")
+		converted_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.temp.bam")
+		convert_to_sam = "samtools view -h {input_file} > {temp}".format(input_file = output_bam, temp = temp_sam_1)
+		rename_records = "sed \"s/\\<GRCh38\\.chr/chr/g\" {temp1} > {temp2}".format(temp1=temp_sam_1, temp2=temp_sam_2)
+		convert_to_bam = "samtools view -b -o {output_bam} {temp2}".format(output_bam = converted_bam, temp2 = temp_sam_2)
+		index_new_bam = "samtools index {input_file}".format(input_file = converted_bam)
+		subprocess.run(convert_to_sam, shell=True, check=True)
+		subprocess.run(rename_records, shell=True, check=True)
+		subprocess.run(convert_to_bam, shell=True, check=True)
+		subprocess.run(index_new_bam, shell=True, check=True)
+		
+		# Add read group 
+		final_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
+		rg_fields = dict(field.split(":", 1) for field in self.read_group_string.split("\t")[1:])
+		rg_id = rg_fields["ID"]
+		rg_sm = rg_fields["SM"]
+		add_rg_cmd = "samtools addreplacerg -r ID:{rg_id} -r SM:{rg_sm} -o {final_bam} {converted_bam}".format(rg_id = rg_id, rg_sm = rg_sm, final_bam = final_bam, converted_bam = converted_bam)
+		subprocess.run(add_rg_cmd, shell=True, check=True)
+		index_final_bam = "samtools index {input_bam}".format(input_bam = final_bam)
+		subprocess.run(index_final_bam, shell=True, check=True)
+
+		clean_up = "rm {bam1} {bam2} {temp1} {temp2}".format(bam = output_bam, bam2 = converted_bam, temp1 = temp_sam_1, temp2 = temp_sam_2)
+		subprocess.run(clean_up, shell=True, check=True)
 
 	# Filer reads that did not map to chromosome 6
 	def filter_reads(self):
@@ -639,10 +691,10 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	sample.convert_bam_to_fastq()
-	sample.mark_duplicates()
+	# sample.convert_bam_to_fastq()
+	# sample.mark_duplicates()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-	sample.trim_adapters()
+	# sample.trim_adapters()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
 	sample.align_to_reference()
 	
@@ -651,7 +703,7 @@ def main():
 	if chr6_reads > min_reads_sample:
 		sample.call_variants()
 		sample.call_structural_variants_pbsv()
-		sample.call_structural_variants_sniffles()
+		# sample.call_structural_variants_sniffles()
 		sample.genotype_tandem_repeats()
 		sample.phase_genotypes_hiphase()
 		sample.merge_hiphase_vcfs()

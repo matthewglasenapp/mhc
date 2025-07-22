@@ -2,15 +2,15 @@ import json
 from Bio import SeqIO
 import edlib
 
-reference_file = "/Users/matt/Downloads/hla_nuc.fasta"
+reference_file = "/Users/matt/Downloads/hla_gen.fasta"
 
 # IHW09117 HLA-B Test Case
-# query_file = "/Users/matt/Downloads/test.fa"
+query_file = "/Users/matt/Desktop/test.fa"
 # Gene for Query file (e.g., "A")
-gene = "B"
+gene = "A"
 
 # All PacBio and ONT Class I haplotypes
-query_file = "/Users/matt/Desktop/fasta_dict.json"
+#query_file = "/Users/matt/Desktop/fasta_dict.json"
 
 class SequenceMatcher:
 
@@ -29,7 +29,7 @@ class SequenceMatcher:
 
 			self.allele_db[gene].append((allele_name, sequence))
 
-	def match_query_sequence(self, gene, query_name, query_sequence, n=3):
+	def match_query_sequence(self, gene, query_name, query_sequence, n=150):
 		print(f"Query Sequence Name: {query_name}")
 		print(f"Query Sequence Gene: HLA-{gene}")
 		alleles = self.allele_db.get(gene)
