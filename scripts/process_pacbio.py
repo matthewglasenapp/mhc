@@ -52,7 +52,11 @@ reference_gbz="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grc
 ref_paths="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
 
 # Use reference fasta with no alternate contigs.
-reference_fasta = os.path.join(input_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
+#reference_fasta = os.path.join(input_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
+#reference_fasta = os.path.join(input_dir, "reference/GRCh38_primary_only.fa")
+# Rename fasta headers
+# sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
+reference_fasta = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
 
 # DeepVariant sif file
 deepvariant_sif = os.path.join(input_dir, "deepvariant_sif/deepvariant.sif")
@@ -320,7 +324,7 @@ class Samples:
 		index_final_bam = "samtools index {input_bam}".format(input_bam = final_bam)
 		subprocess.run(index_final_bam, shell=True, check=True)
 
-		clean_up = "rm {bam1} {bam2} {temp1} {temp2}".format(bam = output_bam, bam2 = converted_bam, temp1 = temp_sam_1, temp2 = temp_sam_2)
+		clean_up = "rm {bam1} {bam2} {temp1} {temp2}".format(bam1 = output_bam, bam2 = converted_bam, temp1 = temp_sam_1, temp2 = temp_sam_2)
 		subprocess.run(clean_up, shell=True, check=True)
 
 	# Filer reads that did not map to chromosome 6
@@ -696,7 +700,7 @@ def main():
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
 	# sample.trim_adapters()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-	sample.align_to_reference()
+	# sample.align_to_reference()
 	
 	chr6_reads = sample.filter_reads()
 
