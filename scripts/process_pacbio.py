@@ -52,11 +52,16 @@ reference_gbz="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grc
 ref_paths="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.dict"
 
 # Use reference fasta with no alternate contigs.
-#reference_fasta = os.path.join(input_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
-#reference_fasta = os.path.join(input_dir, "reference/GRCh38_primary_only.fa")
+# reference_fasta = os.path.join(input_dir, "reference/GCA_000001405.15_GRCh38_no_alt_analysis_set.fa")
+# reference_fasta = os.path.join(input_dir, "reference/GRCh38_primary_only.fa")
 # Rename fasta headers
 # sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
+
+# Reference to use after mapping to graph and surjecting to GRCh38
 reference_fasta = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
+
+# Referencew with added Y scaffold!
+# reference_fasta = os.path.join(input_dir, "reference/augmented_hg38.fa")
 
 # DeepVariant sif file
 deepvariant_sif = os.path.join(input_dir, "deepvariant_sif/deepvariant.sif")
@@ -253,7 +258,7 @@ class Samples:
 		print("\n\n")
 
 	# Align to GRCh38 reference genome with pbmm2
-	def deprecated_align_to_reference(self):
+	def old_align_to_reference(self):
 		print("Aligning reads to GRCh38 reference genome with minimap2!")
 		
 		input_fastq = os.path.join(Samples.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
@@ -357,7 +362,7 @@ class Samples:
 		return read_count
 
 	# Call SNV with DeepVariant
-	def call_variants(self):
+	def old_call_variants(self):
 		print("Calling SNVs and small INDELS with DeepVariant!")
 
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
@@ -399,6 +404,38 @@ class Samples:
 
 		print("VCF written to {}".format(output_vcf))
 		print("GVCF written to {}".format(output_gvcf))
+		print("\n\n")
+
+	# Call SNV with bcftools
+	def call_variants(self):
+		print("Calling SNVs and small INDELS with bcftools!")
+
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
+
+		print("Bcftools input file: {}".format(input_bam))
+		
+		output_vcf = os.path.join(Samples.deepvariant_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.SNV.vcf.gz")
+
+		pileup_threads = str(max_threads // 2)
+		call_threads = str(max_threads // 2)
+
+		bcftools_command = (
+			"bcftools mpileup --config pacbio-ccs-1.20 --threads {pileup_threads} "
+			"-f {reference_genome} -d 1000000 -r chr6:28000000-34000000 "
+			"-a FORMAT/DP,AD,ADF,ADR,SP {input_bam} | "
+			"bcftools call -mv -f GQ --threads {call_threads} -Ou | "
+			"bcftools view -i '(TYPE=\"snp\" && GQ>=20 && QUAL>=10) || (TYPE=\"indel\" && GQ>=10)' "
+			"-Oz -o {output_vcf}").format(
+			pileup_threads=pileup_threads,
+			reference_genome=reference_fasta,
+			input_bam=input_bam,
+			call_threads=call_threads,
+			output_vcf=output_vcf)		
+
+		subprocess.run(bcftools_command, shell=True, check=True)
+		subprocess.run(f"tabix -p vcf {output_vcf}", shell=True, check=True)
+
+		print("VCF written to {}".format(output_vcf))
 		print("\n\n")
 
 	# Run pbsv to call structural variants (SV)
@@ -700,7 +737,7 @@ def main():
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
 	# sample.trim_adapters()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-	# sample.align_to_reference()
+	sample.align_to_reference()
 	
 	chr6_reads = sample.filter_reads()
 
@@ -711,9 +748,9 @@ def main():
 		sample.genotype_tandem_repeats()
 		sample.phase_genotypes_hiphase()
 		sample.merge_hiphase_vcfs()
-		sample.phase_genotypes_whatshap()
-		sample.phase_genotypes_longphase()
-		sample.merge_longphase_vcfs()
+		#sample.phase_genotypes_whatshap()
+		#sample.phase_genotypes_longphase()
+		#sample.merge_longphase_vcfs()
 		end_time = time.time()
 		elapsed_time = end_time - start_time
 		minutes, seconds = divmod(elapsed_time,60)

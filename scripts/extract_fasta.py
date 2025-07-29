@@ -31,17 +31,17 @@ config = {
 		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/phased_vcf_hiphase/",
 		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.joint.vcf.gz",
 		"phased_genes": "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/phased_genes.hiphase_revio.json"
-	},
-	"revio_longphase": {
-		"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/phased_vcf_longphase/",
-		"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
-		"phased_genes": "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/phased_genes.longphase_revio.json"
-	},
-	"promethion_longphase": {
-	    "vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/ont/phased_vcf_longphase/",
-	    "vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz",
-	    "phased_genes": "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/phased_genes.longphase_promethion.json"
 	}
+	# "revio_longphase": {
+	# 	"vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/pacbio/phased_vcf_longphase/",
+	# 	"vcf_suffix": ".dedup.trimmed.hg38.chr6.phased.merged.vcf.gz",
+	# 	"phased_genes": "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/phased_genes.longphase_revio.json"
+	# },
+	# "promethion_longphase": {
+	#     "vcf_dir": "/hb/groups/cornejo_lab/matt/hla_capture/ont/phased_vcf_longphase/",
+	#     "vcf_suffix": ".porechop.trimmed.hg38.rmdup.chr6.longphase.merged.vcf.gz",
+	#     "phased_genes": "/hb/groups/cornejo_lab/matt/hla_capture/haploblocks/phased_genes.longphase_promethion.json"
+	# }
 }
 
 def get_gff_files():
@@ -103,8 +103,15 @@ def filter_vcf(sample, phaser, cfg):
 	filtered_vcf = os.path.join(filtered_vcf_dir, f"{phaser}_{sample}_filtered.vcf.gz")
 
 	# Step 1: Filter for PASS variants and remove unphased hets and unsupported variant types
-	filter_expr = '(GT="hom" || GT~"\\|") && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
-	subprocess.run(f'bcftools view -f PASS -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
+	#filter_expr = '(GT="hom" || GT~"\\|") && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
+	# New filter expression, deal with ./. genotypes
+	filter_expr = '(GT="hom" || GT~"\\|") && GT!="./." && (TYPE="snp" || TYPE="indel" || SVTYPE="INS" || SVTYPE="DEL") && ALT!~"^<"'
+	
+	# Use for DeepVariant
+	#subprocess.run(f'bcftools view -f PASS -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
+	
+	# Use for bcftools 
+	subprocess.run(f'bcftools view -i \'{filter_expr}\' {input_vcf} -Oz -o {pass_vcf}', shell=True, check=True)
 
 	subprocess.run(f"bcftools index {pass_vcf}", shell=True, check=True)
 
