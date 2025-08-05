@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import sys
 import time
+import pysam
 
 """
 Work Flow
@@ -258,7 +259,7 @@ class Samples:
 		print("\n\n")
 
 	# Align to GRCh38 reference genome with pbmm2
-	def old_align_to_reference(self):
+	def align_to_reference_minimap(self):
 		print("Aligning reads to GRCh38 reference genome with minimap2!")
 		
 		input_fastq = os.path.join(Samples.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
@@ -287,7 +288,7 @@ class Samples:
 		print("Mapped bam written to: {}".format(output_bam))
 		print("\n\n")
 
-	def align_to_reference(self):
+	def align_to_reference_vg(self):
 		print("Aligning reads to pangenome reference genome with vg giraffe!")
 		
 		input_fastq = os.path.join(Samples.fastq_rmdup_cutadapt_dir, self.sample_ID + ".dedup.trimmed.fastq.gz")
@@ -309,7 +310,7 @@ class Samples:
 		# Reheader
 		temp_sam_1 = os.path.join(Samples.mapped_bam_dir, self.sample_ID + "_temp1.sam")
 		temp_sam_2 = os.path.join(Samples.mapped_bam_dir, self.sample_ID + "_temp2.sam")
-		converted_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.temp.bam")
+		converted_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pangenome.reheader.bam")
 		convert_to_sam = "samtools view -h {input_file} > {temp}".format(input_file = output_bam, temp = temp_sam_1)
 		rename_records = "sed \"s/\\<GRCh38\\.chr/chr/g\" {temp1} > {temp2}".format(temp1=temp_sam_1, temp2=temp_sam_2)
 		convert_to_bam = "samtools view -b -o {output_bam} {temp2}".format(output_bam = converted_bam, temp2 = temp_sam_2)
@@ -320,7 +321,7 @@ class Samples:
 		subprocess.run(index_new_bam, shell=True, check=True)
 		
 		# Add read group 
-		final_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
+		final_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.bam")
 		rg_fields = dict(field.split(":", 1) for field in self.read_group_string.split("\t")[1:])
 		rg_id = rg_fields["ID"]
 		rg_sm = rg_fields["SM"]
@@ -332,11 +333,38 @@ class Samples:
 		clean_up = "rm {bam1} {bam2} {temp1} {temp2}".format(bam1 = output_bam, bam2 = converted_bam, temp1 = temp_sam_1, temp2 = temp_sam_2)
 		subprocess.run(clean_up, shell=True, check=True)
 
+	def reassign_mapq(self):
+		mapq_dict = dict()
+		bam_hg38 = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
+		bam_pg = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.bam")
+		reassigned_pg = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.mapq_reassign.bam")
+
+		with pysam.AlignmentFile(bam_hg38, "rb") as f:
+			for read in f:
+				mapq_dict[read.query_name] = read.mapping_quality
+
+		missing_reads = []
+
+		with pysam.AlignmentFile(bam_pg) as inbam, pysam.AlignmentFile(reassigned_pg, "wb", template=inbam) as outbam:
+			for read in inbam:
+				new_mapq = mapq_dict.get(read.query_name)
+				if new_mapq is not None:
+					read.mapping_quality = new_mapq
+				else:
+					missing_reads.append(read.query_name)
+				outbam.write(read)
+
+		index_bam = "samtools index {input_bam}".format(input_bam = reassigned_pg)
+		subprocess.run(index_bam, shell=True, check=True)
+
+		if missing_reads:
+			print("{Count} reads in {pg_bam} were missing from {hg38_bam}".format(Count = len(missing_reads), pg_bam = bam_pg, hg38_bam = bam_hg38))
+
 	# Filer reads that did not map to chromosome 6
 	def filter_reads(self):
 		print("Excluding BAM records that don't map to chromosome 6!")
 		
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.mapq_reassign.bam")
 
 		print("Samtools input file: {}".format(input_bam))
   
@@ -362,7 +390,7 @@ class Samples:
 		return read_count
 
 	# Call SNV with DeepVariant
-	def old_call_variants(self):
+	def call_variants(self):
 		print("Calling SNVs and small INDELS with DeepVariant!")
 
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
@@ -407,7 +435,7 @@ class Samples:
 		print("\n\n")
 
 	# Call SNV with bcftools
-	def call_variants(self):
+	def old_call_variants(self):
 		print("Calling SNVs and small INDELS with bcftools!")
 
 		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.chr6.bam")
@@ -737,7 +765,9 @@ def main():
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
 	# sample.trim_adapters()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
-	sample.align_to_reference()
+	sample.align_to_reference_minimap()
+	sample.align_to_reference_vg()
+	sample.reassign_mapq()
 	
 	chr6_reads = sample.filter_reads()
 
