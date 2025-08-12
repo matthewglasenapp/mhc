@@ -59,10 +59,10 @@ ref_paths="/hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-
 # sed 's/^>GRCh38\.chr/>chr/' /hb/scratch/ogarci12/hybridcapture_pangenome/ref/hprc-v1.0-mc-grch38-minaf.0.1.fa > /hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa
 
 # Reference to use after mapping to graph and surjecting to GRCh38
-reference_fasta = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
+# reference_fasta = "/hb/groups/cornejo_lab/matt/hla_capture/input_data/reference/hprc-v1.0-chr-renamed.fa"
 
 # Referencew with added Y scaffold!
-# reference_fasta = os.path.join(input_dir, "reference/augmented_hg38.fa")
+reference_fasta = os.path.join(input_dir, "reference/augmented_hg38.fa")
 
 # DeepVariant sif file
 deepvariant_sif = os.path.join(input_dir, "deepvariant_sif/deepvariant.sif")
@@ -221,7 +221,7 @@ class Samples:
 		
 		subprocess.run(pbmarkdup_cmd, shell=True, check=True)
 
-		gzip_cmd = "pigz -p 8 {input_file}".format(input_file = output_fastq)
+		gzip_cmd = "pigz -f -p 8 {input_file}".format(input_file = output_fastq)
 		subprocess.run(gzip_cmd, shell=True, check=True)
 		
 		print("De-duplicated reads written to: {}!".format(output_fastq))
@@ -364,7 +364,8 @@ class Samples:
 	def filter_reads(self):
 		print("Excluding BAM records that don't map to chromosome 6!")
 		
-		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.mapq_reassign.bam")
+		# input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.pg.mapq_reassign.bam")
+		input_bam = os.path.join(Samples.mapped_bam_dir, self.sample_ID + ".dedup.trimmed.hg38.bam")
 
 		print("Samtools input file: {}".format(input_bam))
   
@@ -760,31 +761,31 @@ def main():
 	print(sample_ID)
 	start_time = time.time()
 	sample = Samples(sample_ID, sample_read_group_string)
-	# sample.convert_bam_to_fastq()
-	# sample.mark_duplicates()
+	sample.convert_bam_to_fastq()
+	sample.mark_duplicates()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_dir, sample_ID + ".dedup.fastq.gz"))
-	# sample.trim_adapters()
+	sample.trim_adapters()
 	# sample.run_fastqc(os.path.join(Samples.fastq_rmdup_cutadapt_dir, sample_ID + ".dedup.trimmed.fastq.gz"))
 	sample.align_to_reference_minimap()
-	sample.align_to_reference_vg()
-	sample.reassign_mapq()
+	# sample.align_to_reference_vg()
+	# sample.reassign_mapq()
 	
 	chr6_reads = sample.filter_reads()
 
 	if chr6_reads > min_reads_sample:
 		sample.call_variants()
-		sample.call_structural_variants_pbsv()
-		# sample.call_structural_variants_sniffles()
-		sample.genotype_tandem_repeats()
-		sample.phase_genotypes_hiphase()
-		sample.merge_hiphase_vcfs()
-		#sample.phase_genotypes_whatshap()
-		#sample.phase_genotypes_longphase()
-		#sample.merge_longphase_vcfs()
-		end_time = time.time()
-		elapsed_time = end_time - start_time
-		minutes, seconds = divmod(elapsed_time,60)
-		print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
+	# 	sample.call_structural_variants_pbsv()
+	# 	# sample.call_structural_variants_sniffles()
+	# 	sample.genotype_tandem_repeats()
+	# 	sample.phase_genotypes_hiphase()
+	# 	sample.merge_hiphase_vcfs()
+	# 	#sample.phase_genotypes_whatshap()
+	# 	#sample.phase_genotypes_longphase()
+	# 	#sample.merge_longphase_vcfs()
+	# 	end_time = time.time()
+	# 	elapsed_time = end_time - start_time
+	# 	minutes, seconds = divmod(elapsed_time,60)
+	# 	print("Processed sampled in {}:{:.2f}!".format(int(minutes), seconds))
 	
 	else:
 		print("Insufficient reads for variant calling")
